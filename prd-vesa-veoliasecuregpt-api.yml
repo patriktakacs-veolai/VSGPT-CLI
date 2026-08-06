@@ -1,0 +1,3928 @@
+>
+openapi: 3.1.0
+
+info:
+  title: VeoliaSecureGPT
+  version: 0.1.0
+  description: |
+    **This API is used to interact with the VeoliaSecureGPT services.**
+
+    For more informations please refer to the [VeoliaSecureGPT hub](https://hub.veolia.chat/Veolia%20Secure%20GPT%20Community) 
+
+    ## Two products
+
+    On production, for the first product, use this url : https://api.veolia.com/llm/veoliasecuregpt/v1
+    On production, for the second product Veolia Secure GPT - FLEX, use this url : https://api.veolia.com/llm/flex/veoliasecuregpt/v1
+    Replace api.veolia.com by dev.api.veolia.com or uat.api.veolia.com for non production environments.
+
+
+    # Integrating the VeoliaSecureGPT Widget into your website/application
+      
+      Welcome to the **VeoliaSecureGPT Widget**! Our widget offers seamless integration into your
+      website/application, providing your users with enhanced features such as chat and assistants. To
+      get started, you'll need to add our widget's script to your HTML and configure it to suit your
+      needs.
+
+    ## Table of contents
+
+    - [Prerequisite](#prerequisite)
+    - [Previewing the widget](#previewing-the-widget)
+    - [Embedding the widget web component](#embedding-the-widget-web-component)
+        - [Positioning the widget](#positioning-the-widget)
+        - [Positioning example](#positioning-example)
+        - [Configuring the widget](#configuring-the-widget)
+        - [Configuration options](#configuration-options)
+        - [Default configuration](#default-configuration)
+        - [Example configurations](#example-configurations)
+    - [Embedding the widget in an iframe](#embedding-the-widget-in-an-iframe)
+        - [Positioning the widget](#positioning-the-widget-1)
+        - [Configuring the widget](#configuring-the-widget-1)
+        - [Configuration options](#configuration-options-1)
+        - [Default configuration](#default-configuration-1)
+        - [Example configurations](#example-configurations-1)
+    - [Configuration error handling](#configuration-error-handling)
+    - [Handling Content Security Policy integration errors](#handling-content-security-policy-integration-errors)
+        - [Content Security Policy (CSP) configuration for widget integration](#content-security-policy-csp-configuration-for-widget-integration)
+    - [Conclusion](#conclusion)
+
+    ## Prerequisite
+      
+      The domain of your website/application must be authorized in order to authenticate to the widget.
+      Please request this from the **VeoliaSecureGPT** team.
+      
+      ## Previewing the widget
+      
+      You can preview the widget before integrating it into your website/application by visiting the
+    following URL: https://gbl-ist-ve-veoliachat.web.app/v2/preview.html.
+
+    ## Embedding the widget web component
+
+    Add the following code to your HTML file:
+      
+      ```html
+      <html>
+      ...
+      <head>
+      ...
+    <!-- ⬇️ Add these lines: -->
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+      <script
+      src="https://veolia.chat/static/widget/vsg-widget-2.2.0.js"
+      type="module"></script>
+      
+      <!-- ⬇️ Add these lines, unless your site already uses these fonts, with the same definitions
+    (with the same font family name and weight): -->
+      <style>
+      @font-face {
+    font-family: 'TheSans Veolia';
+    font-weight: normal;
+    font-style: normal;
+    src: url('https://veolia.chat/static/assets/fonts/TheSansVeolia-W5Pla.otf')
+      format('opentype');
+    }
+      
+      @font-face {
+    font-family: 'TheSans Veolia';
+    font-weight: bold;
+    font-style: normal;
+    src: url('https://veolia.chat/static/assets/fonts/TheSansVeolia-W7Bld.otf')
+      format('opentype');
+    }
+      </style>
+      ...
+      </head>
+      ...
+      <body>
+      ...
+    <!-- ⬇️ Add this line: -->
+      <vsg-widget></vsg-widget>
+      ...
+      </body>
+      </html>
+      ```
+      
+      ### Positioning the widget
+      
+      As for any HTML element, it's up to you to define the widget's position on your site. However, for
+      now, the display will be better if the widget is at the bottom right of the page (as the widget
+      window opens at the top left of the widget button).
+      
+      #### Positioning example
+      
+      ```html
+      <html>
+      ...
+      <head>
+      ...
+    <!-- ⬇️ Add these lines: -->
+      <style>
+      vsg-widget {
+    display: block;
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 9999;
+    }
+      </style>
+      ...
+      </head>
+      ...
+      </html>
+      ```
+      
+      ### Configuring the widget
+      
+      To configure the widget, you need to set a few options in the `options` attribute of the
+      `<vsg-widget>` element.
+      
+      #### Configuration options
+      
+      Options must be in JSON format, passed as a `string` in the `options` attribute of the
+      `<vsg-widget>` element.
+      
+      | Name                           | Type                            | Required | Description                                                                                                                                                              |
+      | ------------------------------ | ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+      | chat                           | Boolean                         | No       | Enable or disable the chat feature.                                                                                                                                      |
+      | assistant                      | String                          | No       | Enable or disable the assistant feature, by setting the name of an assistant.                                                                                            |
+      | assistantContext               | String                          | No       | The context message to be added to the assistant's conversation.                                                                                                         |
+      | insightAssistant        | String                          | No       | The name of the insight assistant to be used.                                                                                                                     |
+      | insightAssistantContext | String                          | No       | The context message to be added to the insight assistant's conversation.                                                                                          |
+      | alertMessage                   | String                          | No       | An alert message displayed as a badge on the widget button. When set, the widget automatically opens and navigates to the tab specified by `alertTarget`.                |
+      | alertTarget                    | 'Chat' \| 'Assistant' \| 'Insight' | No | The tab to activate when the widget opens while `alertMessage` is set. Defaults to the first available service tab if not specified.                              |
+      | theme                          | 'Hubgrade' \| 'Veolia'          | No       | The theme applied to the widget. See https://zeroheight.com/5d1077fb8/p/14403f-themes-foundations.                                                                       |
+      | defaultLanguageCode            | 'en' \| 'fr' \| 'es' \| 'zh-TW' | No       | The default language code in which the widget is translated.                                                                                                             |
+      
+      > ⚠️ For now:
+      >
+      > - You can only use Standard assistants. You can't use Task and Matrix assistants.
+      
+      > 💡 If you want to build your options using a JavaScript object, you can then use the
+      > [`JSON.stringify()` method](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
+      > to convert it into a JSON string.
+      
+      See example configurations below.
+      
+      #### Default configuration
+      
+      If you don't set any option (as in the example above), only the chat service will be activated. If
+      you don't set any theme in the options, the Hubgrade theme will be applied. If you don't set any
+      language code in the options, English (`en`) will be used.
+      
+      #### Example configurations
+      
+      ##### Chat service only with Hubgrade theme
+      
+      ```html
+    <vsg-widget options='{"chat": true, "theme": "Hubgrade"}'></vsg-widget>
+    ```
+
+    ##### Assistant service only with Veolia theme and French as default language
+
+    ```html
+    <vsg-widget
+      options='{"assistant": "{{assistant_name}}", "theme": "Veolia", "defaultLanguageCode": "fr"}'></vsg-widget>
+    ```
+
+    Where `{{assistant_name}}` is the name of the assistant to be used.
+
+    ##### Both chat and assistant services
+
+    ```html
+    <vsg-widget
+      options='{"chat": true, "assistant": "{{assistant_name}}"}'></vsg-widget>
+    ```
+
+    Where `{{assistant_name}}` is the name of the assistant to be used.
+
+    ##### Assistant service with context
+
+    ```html
+    <vsg-widget
+      options='{"assistant": "{{assistant_name}}", "assistantContext": "{{assistant_context}}", "theme": "Veolia"}'></vsg-widget>
+    ```
+
+    Where `{{assistant_name}}` is the name of the assistant to be used, and `{{assistant_context}}` some context you provide to this assistant.
+
+    ##### Insights service only with Veolia theme
+
+    ```html
+    <vsg-widget
+      options='{"insightAssistant": "{{insight_assistant_name}}", "theme": "Veolia"}'></vsg-widget>
+    ```
+
+    Where `{{insight_assistant_name}}` is the name of the insight assistant to be used.
+
+    ##### Insights service with context
+
+    ```html
+    <vsg-widget
+      options='{"insightAssistant": "{{insight_assistant_name}}", "insightAssistantContext": "{{insight_assistant_context}}"}'></vsg-widget>
+    ```
+
+    Where `{{insight_assistant_name}}` is the name of the insight assistant to be used, and `{{insight_assistant_context}}` some context you provide to this assistant.
+
+    ## Embedding the widget in an iframe
+
+    If you can't modify your website's code directly (as in a Google Site, for example), you can
+      embed the widget using an iframe.
+      
+      The URL of the page to embed is https://gbl-ist-ve-veoliachat.web.app/v2.
+      
+      ## Positioning the widget
+      
+      The widget will be positioned at the bottom right of the page, with a 16px margin.
+      
+      ## Configuring the widget
+      
+      To configure the widget, you need to set a few options in the query parameters of the page URL
+      given above.
+
+    ### Configuration options
+      
+      | Name                                    | Type                            | Required | Description                                                                                                                                                              |
+      | --------------------------------------- | ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+      | vsgWidgetChat                           | Boolean                         | No       | Enable or disable the chat feature.                                                                                                                                      |
+      | vsgWidgetAssistant                      | String                          | No       | Enable or disable the assistant feature, by setting the name of an assistant.                                                                                            |
+      | vsgWidgetAssistantContext               | String                          | No       | The context message to be added to the assistant's conversation.                                                                                                         |
+      | vsgWidgetInsightAssistant               | String                          | No       | The name of the insight assistant to be used.                                                                                                                     |
+      | vsgWidgetInsightAssistantContext        | String                          | No       | The context message to be added to the insight assistant's conversation.                                                                                          |
+      | vsgWidgetAlertMessage                   | String                          | No       | An alert message displayed as a badge on the widget button. When set, the widget automatically opens and navigates to the tab specified by `vsgWidgetAlertTarget`.       |
+      | vsgWidgetAlertTarget                    | 'Chat' \| 'Assistant' \| 'Insight' | No    | The tab to activate when the widget opens while `vsgWidgetAlertMessage` is set. Defaults to the first available service tab if not specified.                      |
+      | vsgWidgetTheme                          | 'Hubgrade' \| 'Veolia'          | No       | The theme applied to the widget. See https://zeroheight.com/5d1077fb8/p/14403f-themes-foundations.                                                                       |
+      | vsgWidgetDefaultLanguageCode            | 'en' \| 'fr' \| 'es' \| 'zh-TW' | No       | The default language code in which the widget is translated.                                                                                                             |
+      
+      > ⚠️ For now:
+      >
+      > - You can only use Standard assistants. You can't use Task and Matrix assistants.
+      
+      See example configurations below.
+      
+      ### Default configuration
+      
+      If you don't set any option in the query parameters of the URL, only the chat service will be
+      activated. If you don't set any theme in the options, the Hubgrade theme will be applied.
+      
+      ### Example configurations
+      
+      #### Chat service only with Hubgrade theme
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetChat=true&vsgWidgetTheme=Hubgrade
+      ```
+      
+      #### Assistant service only with Veolia theme and French as default language
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetAssistant={{assistant_name}}&vsgWidgetTheme=Veolia&vsgWidgetLanguageCode=fr
+      ```
+      
+      Where `{{assistant_name}}` is the name of the assistant to be used.
+      
+      #### Both chat and assistant services
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetChat=true&vsgWidgetAssistant={{assistant_name}}
+      ```
+      
+      Where `{{assistant_name}}` is the name of the assistant to be used.
+      
+      #### Assistant service with context
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetAssistant={{assistant_name}}&vsgWidgetAssistantContext={{assistant_context}}&vsgWidgetTheme=Veolia
+      ```
+      
+      Where `{{assistant_name}}` is the name of the assistant to be used, and `{{assistant_context}}` some context you provide to this assistant.
+      
+      #### Insights service only with Veolia theme
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetInsightAssistant={{insight_assistant_name}}&vsgWidgetTheme=Veolia
+      ```
+      
+      Where `{{insight_assistant_name}}` is the name of the insight assistant to be used.
+      
+      #### Insights service with context
+      
+      ```txt
+      https://gbl-ist-ve-veoliachat.web.app/v2?vsgWidgetInsightAssistant={{insight_assistant_name}}&vsgWidgetInsightAssistantContext={{insight_assistant_context}}
+      ```
+      
+      Where `{{insight_assistant_name}}` is the name of the insight assistant to be used, and `{{insight_assistant_context}}` some context you provide to this assistant.
+      
+      ## Configuration error handling
+      
+      If the provided configuration is invalid, the default configuration will be applied, and the widget
+      will still function with basic settings. The details of any configuration errors encountered will
+      be displayed in the browser console for debugging purposes. This ensures that you can quickly
+      identify and resolve any configuration issues.
+      
+      ## Handling Content Security Policy integration errors
+      
+      ### Content Security Policy (CSP) configuration for widget integration
+      
+      When integrating our widget into your web page, you may encounter an issue where resources such as
+      scripts, styles or images within the widget are not loaded correctly. This problem is likely due to
+      your site's CSP settings, which are designed to enhance security by restricting the sources from
+      which content can be loaded.
+      
+      To ensure that all resources in our widget load properly, you need to adjust your CSP headers to
+      allow these resources from our trusted sources. Specifically, you should add the following
+    directives to your CSP configuration:
+      
+      ```
+    Content-Security-Policy: default-src 'self' 'unsafe-inline' https://veolia.chat/static/widget/vsg-widget-2.2.0.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/css2 https://accounts.google.com/gsi/style; img-src 'self' data: https://veolia.chat/static/assets/; font-src 'self' https://veolia.chat/static/assets/; connect-src 'self' https://api.veolia.com https://veolia.chat;
+      ```
+      
+      ## Conclusion
+      
+      Integrating the **VeoliaSecureGPT Widget** into your website is straightforward. By following the
+      above steps and ensuring the configuration meets the specified requirements, you can enhance your
+      website with our powerful services. Should you encounter any issues or have questions, please
+      consult the console logs for error details or contact our support team.
+
+
+    #  Veolia Secure GPT in streaming mode
+
+    Our API supports streaming mode, providing integration with **Server-Sent Events (SSE)**  and **WebSocket** protocols. 
+
+
+
+    ## Server-Sent Events (SSE)
+
+    [SSE](https://en.wikipedia.org/wiki/Server-sent_events) is a protocol for sending automatic updates from a server to a client over an HTTP connection. Unlike WebSocket, SSE is **unidirectional**, meaning that the server can push updates to the client, but the client cannot send data back to the server over the same connection.
+
+    You can find below an example of implementation of SSE with veoliasecure gpt in python that uses the library [sseclient-py](https://pypi.org/project/sseclient-py/#description)
+
+    ### Example of veoliasecure gpt using sse protocol in python
+
+    ```py
+
+      import json
+      import sseclient
+
+      YOUR_ACCESS_TOKEN="YOUR_ACCESS_TOKEN"
+      YOUR_MAIL="YOUR_MAIL"
+
+      def with_urllib3(url, headers,data):
+          """Get a streaming response for the given event feed using urllib3."""
+          import urllib3
+          http = urllib3.PoolManager()
+          return http.request('POST', url, preload_content=False, headers=headers,body=data)
+
+
+      url = 'https://api.veolia.com/llm/veoliasecuregpt/v1/sse_answer'
+      headers = {
+              "Authorization": f"Bearer {YOUR_ACCESS_TOKEN}",
+              "Content-Type": "application/json"
+      }
+      encoded_body = json.dumps( {   
+              "useremail": f"{YOUR_MAIL}",
+              "model": "gpt-35-turbo-16k",
+              "temperature": "0.1",
+              "top_p": "0.1",
+              "messages":[
+              {
+                  "role": "user",
+                  "text": "count to 10"
+              },
+              {
+                  "role": "assistant",
+                  "text": "1, 2, 3, 4, 5, 6, 7, 8, 9, 10"
+              },
+              {
+                  "role": "user",
+                  "text": "what are the 10 first letters"    },
+              {
+                  "role": "assistant",
+                  "text": "The 10 first letters of the English alphabet are: A, B, C, D, E, F, G, H, I, J."    },
+              {
+                  "role": "user",
+                  "text": "combine my last questions into one answer and then write 100 random words"    }
+              ]
+      })
+      response = with_urllib3(url, headers,encoded_body)  
+      client = sseclient.SSEClient(response)
+      for event in client.events():
+          print(json.loads(event.data))
+    ```
+
+    ## WebSocket
+
+    [WebSocket](https://en.wikipedia.org/wiki/WebSocket) is a protocol that allows **bidirectional** streaming communication between client and server over a single, long-lived connection. 
+
+    The documentation of the spec can be found in this link [here](https://veolia.chat/public/veoliasecuregpt-async-prd.yml).
+
+    You can find below an example of implementation of websocket with veoliasecure gpt in python that uses the library [websocket-client](https://pypi.org/project/websocket-client/#description)
+
+    ### Example of veoliasecure gpt using websocket protocol in python
+
+    ```py
+      import websocket
+      import json
+
+      YOUR_ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
+      YOUR_MAIL = "YOUR_MAIL"
+
+      def on_message(ws, message):
+          print("Received:", message)
+
+      def on_error(ws, error):
+          print("Error:", error)
+
+      def on_close(ws, close_status_code, close_msg):
+          print("WebSocket disconnected")
+
+      def on_open(ws):
+          print("WebSocket connected")
+
+      requestData = {
+          "useremail": f "{YOUR_MAIL}",
+          "model": "gpt-35-turbo-16k",
+          "temperature": "0.1",
+          "top_p": "0.1",
+          "history": [{
+              "role": "user",
+              "content": "count to 10"
+          }, {
+              "role": "assistant",
+              "content": "1, 2, 3, 4, 5, 6, 7, 8, 9, 10"
+          }, {
+              "role": "user",
+              "content": "what are the 10 first letters"
+          }, {
+              "role": "assistant",
+              "content": "The 10 first letters of the English alphabet are: A, B, C, D, E, F, G, H, I, J."
+          }, {
+              "role": "user",
+              "content": "combine my last questions into one answer"
+          }]
+      }
+
+      ws.send(json.dumps(requestData))
+
+      if __name__ == "__main__":
+          ws = websocket.WebSocketApp("wss://dev.api.veolia.com/llm/ws/veoliasecuregpt/v1/ws_answer",
+              on_open = on_open,
+              on_message = on_message,
+              on_error = on_error,
+              on_close = on_close,
+              header = {
+                  "Authorization": f "Bearer {YOUR_ACCESS_TOKEN}"
+              })
+      ws.run_forever()
+
+    ```
+
+  contact:
+    name: Fouad Maach
+    email: fouad.maach@veolia.com
+servers:
+  - url: https://api.veolia.com/llm/veoliasecuregpt/v1
+    x-computedUrl: https://api.veolia.com/llm/veoliasecuregpt/v1
+tags:
+  - name: "Chat"
+  - name: "Agents"
+  - name: "Translate"
+  - name: "Image"
+  - name: "KB (deprecated)"
+paths:
+  /answer:
+    post:
+      tags:
+        - Chat
+      summary: Answer
+      description: Endpoint to synchronously answer a question using VeoliaSecureGPT chat API.
+      operationId: answer_answer_post
+      parameters:
+        - name: persist_thread
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: If true, save the generated turn into a Firestore thread.
+            default: false
+            title: Persist Thread
+          description: If true, save the generated turn into a Firestore thread.
+        - name: thread_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            description: Existing thread ID to resume from. If persist_thread is true, the new turn is appended to this thread.
+            title: Thread Id
+          description: Existing thread ID to resume from. If persist_thread is true, the new turn is appended to this thread.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              simple_request:
+                summary: Simple request
+                description: A simple example with a simple user request
+                value:
+                  useremail: user@veolia.com
+                  history:
+                    - role: user
+                      content: Count from 1 to 10.
+              structured_output_request:
+                summary: Structured output request
+                description: Example using response_format for structured output (standard JSON Schema format)
+                value:
+                  useremail: user@veolia.com
+                  history:
+                    - role: user
+                      content: Tell me about Jean-Michel Jarre, the French electronic music artist
+                  response_format:
+                    type: object
+                    title: ArtistInfo
+                    properties:
+                      first_name:
+                        type: string
+                        description: First name of the artist
+                      last_name:
+                        type: string
+                        description: Last name of the artist
+                      birth_date:
+                        type: string
+                        description: Birth date (YYYY-MM-DD)
+                      country:
+                        type: string
+                        description: Country of origin
+                      genre:
+                        type: string
+                        description: Music genre
+                      career_start:
+                        type: string
+                        description: Year career started (YYYY)
+                      notable_albums:
+                        type: array
+                        items:
+                          type: string
+                        description: List of notable albums
+                    required:
+                      - first_name
+                      - last_name
+                      - birth_date
+                      - country
+                      - genre
+                      - career_start
+                    additionalProperties: false
+              specify_model:
+                summary: Specify model in request
+                description: An example specifying the model to use in the request
+                value:
+                  useremail: user@veolia.com
+                  model: gpt-4o
+                  history:
+                    - role: user
+                      content: Count from 1 to 10.
+              request_with_history:
+                summary: Provide chat history context
+                value:
+                  useremail: user@veolia.com
+                  history:
+                    - role: user
+                      content: Hello, my name is John.
+                    - role: assistant
+                      content: Hi John, how can I help you
+                    - role: user
+                      content: What is my name ?
+              multimodal_image_base_64:
+                summary: Multimodal request with base64 image
+                value:
+                  useremail: user@veolia.com
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: describe whats in that picture
+                        - type: image_url
+                          image_url:
+                            url: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5
+              multimodal_pdf:
+                summary: Multimodal request with PDF document
+                description: |2-
+
+                                  Only works with Gemini models. For other models, see the multimodal_pdf_base64 example.
+
+                                  # IMPORTANT:
+                                  you need to provide read access to the bucket or object (**storage.objects.get**) to the services accounts:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat.iam.gserviceaccount.com
+
+                                  #### if you are *UAT* user:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat-uat.iam.gserviceaccount.com
+                                  
+                value:
+                  useremail: user@veolia.com
+                  model: gemini-2.5-flash
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: What is the main topic of this PDF?
+                        - type: image_url
+                          image_url:
+                            url: gs://widgets-bucket-dev/testing/AmazonBedrock_UserGuide.pdf
+              multimodal_pdf_base64:
+                summary: Multimodal request with PDF document (for models other than Gemini)
+                description: ''
+                value:
+                  useremail: user@veolia.com
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: What is the main topic of this PDF?
+                        - type: image_url
+                          image_url:
+                            url: data:application/pdf;base64,JVBER...
+              multimodal_video:
+                summary: Multimodal request with Video document
+                description: |2-
+
+                                  Only works with Gemini models.
+
+                                  # IMPORTANT:
+                                  you need to provide read access to the bucket or object (**storage.objects.get**) to the services accounts:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat.iam.gserviceaccount.com
+
+                                  #### if you are *UAT* user:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat-uat.iam.gserviceaccount.com
+                                  
+                value:
+                  useremail: user@veolia.com
+                  model: gemini-2.5-flash
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: What is the main content of this video?
+                        - type: image_url
+                          image_url:
+                            url: gs://widgets-bucket-dev/testing/file_example_MP4_640_3MG.mp4
+              nova_pro_docx_example:
+                summary: Multimodal request with DOCX document on Nova Pro
+                value:
+                  useremail: user@veolia.com
+                  model: amazon.nova-pro-v1:0
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: describe what's in the file
+                        - type: image_url
+                          image_url:
+                            url: data:@file/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQACA...
+              nova_pro_xlsx_example:
+                summary: Multimodal request with XLSX document on Nova Pro
+                value:
+                  useremail: user@veolia.com
+                  model: amazon.nova-pro-v1:0
+                  history:
+                    - role: user
+                      content:
+                        - type: text
+                          text: describe what's in the file
+                        - type: image_url
+                          image_url:
+                            url: data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,UEsDBBQACAgI...
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              examples:
+                response_with_sources:
+                  summary: Answer including sources
+                  value:
+                    answer: This is your anwser.
+                    sources:
+                      - id: source_5_0
+                        text: '...'
+                    usage:
+                      input_tokens: 5448
+                      output_tokens: 51
+                    metadata:
+                      llm_type: SLM
+                      model_id: gpt-4.1
+                response_with_structured_output:
+                  summary: Answer with structured output
+                  value:
+                    answer: ''
+                    structured_answer:
+                      first_name: Jean-Michel
+                      last_name: Jarre
+                      birth_date: '1948-08-24'
+                      country: France
+                      genre: Electronic
+                      career_start: '1968'
+                      notable_albums:
+                        - Oxygene
+                        - Equinoxe
+                        - Magnetic Fields
+                        - Zoolook
+                    usage:
+                      input_tokens: 156
+                      output_tokens: 94
+                    metadata:
+                      llm_type: SLM
+                      model_id: gpt-4.1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sse_answer:
+    post:
+      tags:
+        - Chat
+      summary: Stream
+      description: Endpoint to asynchronously answer a question using VeoliaSecureGPT chat API using SSE
+      operationId: stream_sse_answer_post
+      parameters:
+        - name: persist_thread
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: If true, persist the conversation as a thread in Firestore.
+            default: false
+            title: Persist Thread
+          description: If true, persist the conversation as a thread in Firestore.
+        - name: thread_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+            title: Thread Id
+          description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SSEChatRequest'
+            examples:
+              simple_request:
+                summary: Simple request
+                description: A simple example with a simple user request
+                value:
+                  useremail: user@veolia.com
+                  messages:
+                    - role: user
+                      text: Count from 1 to 10.
+              structured_output_request:
+                summary: Structured output request
+                description: 'Example using response_format for structured output. Returns an SSE event: `event: structured_answer`'
+                value:
+                  useremail: user@veolia.com
+                  messages:
+                    - role: user
+                      text: Tell me about Jean-Michel Jarre, the French electronic music artist
+                  response_format:
+                    type: object
+                    title: ArtistInfo
+                    properties:
+                      first_name:
+                        type: string
+                        description: First name of the artist
+                      last_name:
+                        type: string
+                        description: Last name of the artist
+                      country:
+                        type: string
+                        description: Country of origin
+                      genre:
+                        type: string
+                        description: Music genre
+                    required:
+                      - first_name
+                      - last_name
+                      - country
+                      - genre
+                    additionalProperties: false
+              specify_model:
+                summary: Specify model in request
+                description: An example specifying the model to use in the request
+                value:
+                  useremail: user@veolia.com
+                  model: gpt-4o
+                  messages:
+                    - role: user
+                      text: Count from 1 to 10.
+              request_with_history:
+                summary: Provide chat history context
+                value:
+                  useremail: user@veolia.com
+                  messages:
+                    - role: user
+                      text: Hello, my name is John.
+                    - role: assistant
+                      text: Hi John, how can I help you
+                    - role: user
+                      text: What is my name ?
+              multimodal_image_base_64:
+                summary: Multimodal request with base64 image
+                value:
+                  useremail: user@veolia.com
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: describe whats in that picture
+                        - type: image_url
+                          image_url:
+                            url: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5
+              multimodal_pdf:
+                summary: Multimodal request with PDF document
+                description: |2-
+
+                                  Only works with Gemini models. For other models, see the multimodal_pdf_base64 example.
+
+                                  # IMPORTANT:
+                                  you need to provide read access to the bucket or object (**storage.objects.get**) to the services accounts:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat.iam.gserviceaccount.com
+
+                                  #### if you are *UAT* user:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat-uat.iam.gserviceaccount.com
+                                  
+                value:
+                  useremail: user@veolia.com
+                  model: gemini-2.5-flash
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: What is the main topic of this PDF?
+                        - type: image_url
+                          image_url:
+                            url: gs://widgets-bucket-dev/testing/AmazonBedrock_UserGuide.pdf
+              multimodal_pdf_base64:
+                summary: Multimodal request with PDF document (for models other than Gemini)
+                description: ''
+                value:
+                  useremail: user@veolia.com
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: What is the main topic of this PDF?
+                        - type: image_url
+                          image_url:
+                            url: data:application/pdf;base64,JVBER...
+              multimodal_video:
+                summary: Multimodal request with Video document
+                description: |2-
+
+                                  Only works with Gemini models.
+
+                                  # IMPORTANT:
+                                  you need to provide read access to the bucket or object (**storage.objects.get**) to the services accounts:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat.iam.gserviceaccount.com
+
+                                  #### if you are *UAT* user:
+                                  - gbl.ist.vsg-technical-group-account.all.groups@veolia.com
+                                  - cloudrun-main@gbl-ist-ve-veoliachat-uat.iam.gserviceaccount.com
+                                  
+                value:
+                  useremail: user@veolia.com
+                  model: gemini-2.5-flash
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: What is the main content of this video?
+                        - type: image_url
+                          image_url:
+                            url: gs://widgets-bucket-dev/testing/file_example_MP4_640_3MG.mp4
+              nova_pro_docx_example:
+                summary: Multimodal request with DOCX document on Nova Pro
+                value:
+                  useremail: user@veolia.com
+                  model: amazon.nova-pro-v1:0
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: describe what's in the file
+                        - type: image_url
+                          image_url:
+                            url: data:@file/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQACA...
+              nova_pro_xlsx_example:
+                summary: Multimodal request with XLSX document on Nova Pro
+                value:
+                  useremail: user@veolia.com
+                  model: amazon.nova-pro-v1:0
+                  messages:
+                    - role: user
+                      text:
+                        - type: text
+                          text: describe what's in the file
+                        - type: image_url
+                          image_url:
+                            url: data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,UEsDBBQACAgI...
+      responses:
+        '200':
+          description: Successful Response - SSE stream of answers
+          content:
+            text/event-stream:
+              examples:
+                data:
+                  summary: Text Chunks
+                  value: 'data: {"text": "This is a chunk of the answer"}'
+                structured_answer:
+                  summary: Structured answer (when response_format is provided)
+                  value: |-
+                    event: structured_answer
+                    data: {"first_name": "Jean-Michel", "last_name": "Jarre"}
+                usage:
+                  summary: Usage metrics
+                  value: |-
+                    event: usage
+                    data: {"input_tokens": 42, "output_tokens": 42}
+                metadata:
+                  summary: Metadata
+                  value: |-
+                    event: metadata
+                    data: {"llm_type": "openai", "model_id": "gpt-4o"}
+                end:
+                  summary: Event to signal the end of the stream
+                  value: 'event: end'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /chat/completions:
+    post:
+      tags:
+        - Chat
+      summary: Openai Chat Completions compatible api
+      description: |-
+        **Endpoint to synchronously answer a question using OpenAI Chat Completions compatible API.**
+
+        **End-user identification requirements:**
+        - The `user` or `useremail` attribute is mandatory when calling through the VeoliaSecureGPT proxy
+        - Neither `user` nor `useremail` attributes are required when calling through the VeoliaSecureGPT Flex proxy (billed by token volume)
+      operationId: openai_chat_completion_chat_completions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAIChatCompletionRequest'
+            examples:
+              gemini_2_5_pro:
+                summary: Completion Endpoint gemini-2.5-pro
+                value:
+                  user: fouad.maach@veolia.com
+                  model: gemini-2.5-pro
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant. working for veolia, you are called VSG
+                    - role: user
+                      content: bonjour, raconte moi une histoire de 500 mots
+                  temperature: 0.7
+                  stream: true
+              claude_v4_5:
+                summary: Completion Endpoint anthropic.claude-v4.5
+                value:
+                  user: fouad.maach@veolia.com
+                  model: anthropic.claude-v4.5
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant. working for veolia, you are called VSG
+                    - role: user
+                      content: bonjour, raconte moi une histoire de 500 mots
+                  temperature: 0.7
+                  stream: true
+              gpt_5:
+                summary: Completion Endpoint gpt-5
+                value:
+                  user: fouad.maach@veolia.com
+                  model: gpt-5
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant. working for veolia, you are called VSG
+                    - role: user
+                      content: bonjour, raconte moi une histoire de 500 mots
+                  temperature: 0.7
+                  stream: true
+              gpt_5_multimodal:
+                summary: Completion Endpoint GPT-5 multimodal
+                value:
+                  user: fouad.maach@veolia.com
+                  model: gpt-5
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant. working for veolia, you are called VSG
+                    - role: user
+                      content:
+                        - type: text
+                          text: Bonjour, c'est quoi dans cet image ?
+                        - type: image_url
+                          image_url:
+                            url: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxA...AAAA//2Q==
+                  temperature: 0.7
+                  stream: true
+              claude_v4_5_pdf:
+                summary: Claude 4.5 PDF
+                value:
+                  user: fouad.maach@veolia.com
+                  model: anthropic.claude-v4.5
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant. working for veolia, you are called VSG
+                    - role: user
+                      content:
+                        - type: text
+                          text: summarize this document
+                        - type: image_url
+                          image_url:
+                            url: data:application/pdf;base64,JVBERi0x...VFT0YK
+                  temperature: 0.7
+                  stream: true
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              examples:
+                default:
+                  summary: Example Response
+                  value:
+                    id: chatcmpl-123
+                    object: chat.completion
+                    created: 1677652288
+                    model: gpt-4.1
+                    choices:
+                      - index: 0
+                        message:
+                          role: assistant
+                          content: Hello! How can I assist you today?
+                        finish_reason: stop
+                    usage:
+                      prompt_tokens: 13
+                      completion_tokens: 7
+                      total_tokens: 20
+            text/event-stream; charset=utf-8:
+              examples:
+                default:
+                  summary: Example Streaming Response Chunk
+                  value:
+                    data: '{ "id": "completion_id", "object": "chat.completion.chunk", "created": 1677652288, "model": "gpt-4.1", "choices": [{"index": 0, "delta": {"content": "Hello! How ca"}, "finish_reason": None,}],}'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /models:
+    get:
+      tags:
+        - Chat
+      summary: OpenAI compatible Endpoint to List Models
+      description: '**Endpoint to list available models using OpenAI compatible API.**'
+      operationId: list_models_models_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListModelsResponse'
+              examples:
+                list_models_response:
+                  summary: List Models Response Example
+                  value:
+                    object: list
+                    data:
+                      - id: gpt-4.1
+                        object: model
+                        owned_by: VeoliaSecureGPT
+  /llms:
+    get:
+      tags:
+        - Chat
+      summary: Get the list of available LLMs and the attribute of each LLM
+      description: '**Endpoint to list all available LLMs with the full set of attributes for each model.**'
+      operationId: get_llms_llms_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Get Llms Llms Get
+  /assistant:
+    get:
+      tags:
+        - Agents
+      summary: Get All Assistants
+      description: Retrieve a list of assistants accessible to the user based on their         email or group membership and the version that is published.
+      operationId: get_all_assistants_assistant_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AssistantResponse'
+                type: array
+                title: Response Get All Assistants Assistant Get
+              examples:
+                one_standard_agent:
+                  summary: Response with one Standard agent
+                  value:
+                    - assistant_name: my-agent
+                      display_name: My Agent
+                      matrix_bucket_name: matrix_bucket_name
+                      mode: Standard
+                      assistant_goal: This is the main goal of the agent
+                      welcome_message: welcome_message
+                      key_subjects:
+                        - 4e0ba220-9575-11eb-a8b3-0242ac130003
+                      owners:
+                        - user@veolia.com
+                      readers_google_group: some-google-group@veolia.com
+                      is_public: false
+                      configuration:
+                        suggested_prompts: []
+                        deep_research_config:
+                          name: DeepResearch
+                          active: true
+                      created_at: '2025-11-03T17:52:43.433Z'
+                      updated_at: '2025-11-03T17:52:43.433Z'
+                      can_edit: true
+                      can_publish: false
+                      version: 1
+                      is_published: false
+                      bu_code: vesa
+                      icon_name: icon_name
+                      jobs:
+                        - 4e0ba220-9575-11eb-a8b3-0242ac130003
+                      criteria:
+                        - {}
+  /assistant/{assistant_name}/welcome_message:
+    get:
+      tags:
+        - Agents
+      summary: Get Assistant Welcome Message By Name
+      description: Retrieve the welcome message of an assistant published version by its name.
+      operationId: get_assistant_welcome_message_by_name_assistant__assistant_name__welcome_message_get
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+        - name: x-vsg-google-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+            title: X-Vsg-Google-Access-Token
+          description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+        - name: x-vsg-google-refresh-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+            title: X-Vsg-Google-Refresh-Token
+          description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: If using `gcloud auth login`, you can find the refresh token in the `credentials.db` file located at `~/.config/gcloud/credentials.db`.
+              value: 1//03qW8dIWIeC.......
+            gcloud application-default:
+              summary: Get the refresh token from application-defaults.json
+              description: If using `gcloud auth application-default login`, you can find the refresh token in the `application-defaults.json` file located at `~/.config/gcloud/application-defaults.json`.
+              value: 1//03qW8dIWIeC.......
+            python:
+              summary: Get the refresh token using Python
+              description: |2-
+
+                You can get the refresh token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                refresh_token = credentials.refresh_token
+                ```
+                                
+              value: 1//03qW8dIWIeC.......
+            app script:
+              summary: Get the refresh token using Google Apps Script
+              description: |2-
+
+                Google Apps Script does not provide a way to get the refresh token natively. 
+                But as the access token is generated in the same script, there should not be refresh issue.
+                        
+              value: 1//03qW8dIWIeC.......
+        - name: x-vsg-user-email
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: User email. Only required if the agent has a dynamic welcome message.
+            title: X-Vsg-User-Email
+          description: User email. Only required if the agent has a dynamic welcome message.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantWelcomeMessageResponse'
+              examples:
+                static_welcome_message:
+                  summary: Welcome message with no dynamic part
+                  value:
+                    welcome_message: Hello! I'm your assistant. How can I help you today?
+                    usage:
+                      input_tokens: 0
+                      output_tokens: 0
+                    metadata:
+                      agent_name: my_assistant
+                      agent_version: 1
+                dynamic_welcome_message:
+                  summary: Welcome message with a dynamic part
+                  value:
+                    welcome_message: Hello! I'm your assistant. This part is computed
+                    usage:
+                      input_tokens: 200
+                      output_tokens: 100
+                    metadata:
+                      llm_type: SLM
+                      agent_name: my_assistant
+                      agent_version: 1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assistant/{assistant_name}/configuration/suggested-prompts:
+    get:
+      tags:
+        - Agents
+      summary: Get Assistant Suggested Prompt By Name
+      description: Retrieve the suggested prompt of an assistant published version by its name.
+      operationId: get_assistant_suggested_prompt_by_name_assistant__assistant_name__configuration_suggested_prompts_get
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SuggestedPrompt'
+                title: Response Get Assistant Suggested Prompt By Name Assistant  Assistant Name  Configuration Suggested Prompts Get
+              examples:
+                suggested_prompts:
+                  summary: Suggested Prompts
+                  value:
+                    - title: Title displayed to the user
+                      content: This is the content that will be sent in the conversation.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assistant/{assistant_name}/configuration/variables:
+    get:
+      tags:
+        - Agents
+      summary: Get Assistant Configuration Variables By Name
+      description: Retrieve the configuration variables of an assistant published version by its name.
+      operationId: get_assistant_configuration_variables_by_name_assistant__assistant_name__configuration_variables_get
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantConfigurationVariablesResponse'
+              examples:
+                string_variable:
+                  summary: Response with a string variable
+                  value:
+                    variables:
+                      - name: variable_1
+                        type: string
+                        label: Variable 1
+                video_url_variable:
+                  summary: Response with a video URL variable
+                  value:
+                    variables:
+                      - name: reference_video
+                        type: video_url
+                        label: URL of the reference video
+                no_variable:
+                  summary: Response with no variable
+                  value:
+                    variables: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assistant/answer/{assistant_name}:
+    post:
+      tags:
+        - Agents
+      summary: Answer Assistant
+      description: Generate an answer from assistant.
+      operationId: answer_assistant_assistant_answer__assistant_name__post
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+        - name: version
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Version
+        - name: persist_thread
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: If true, persist the conversation as a thread in Firestore.
+            default: false
+            title: Persist Thread
+          description: If true, persist the conversation as a thread in Firestore.
+        - name: thread_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+            title: Thread Id
+          description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+        - name: debug
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Debug
+        - name: x-vsg-google-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+            title: X-Vsg-Google-Access-Token
+          description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+        - name: x-bigquery-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: BigQuery Access Token. Only required if the agents needs access to BigQuery.
+            deprecated: true
+            title: X-Bigquery-Access-Token
+          description: BigQuery Access Token. Only required if the agents needs access to BigQuery.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+          deprecated: true
+        - name: x-vsg-google-refresh-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+            title: X-Vsg-Google-Refresh-Token
+          description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: If using `gcloud auth login`, you can find the refresh token in the `credentials.db` file located at `~/.config/gcloud/credentials.db`.
+              value: 1//03qW8dIWIeC.......
+            gcloud application-default:
+              summary: Get the refresh token from application-defaults.json
+              description: If using `gcloud auth application-default login`, you can find the refresh token in the `application-defaults.json` file located at `~/.config/gcloud/application-defaults.json`.
+              value: 1//03qW8dIWIeC.......
+            python:
+              summary: Get the refresh token using Python
+              description: |2-
+
+                You can get the refresh token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                refresh_token = credentials.refresh_token
+                ```
+                                
+              value: 1//03qW8dIWIeC.......
+            app script:
+              summary: Get the refresh token using Google Apps Script
+              description: |2-
+
+                Google Apps Script does not provide a way to get the refresh token natively. 
+                But as the access token is generated in the same script, there should not be refresh issue.
+                        
+              value: 1//03qW8dIWIeC.......
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessagesInput'
+            examples:
+              standard_assistant:
+                summary: Standard Assistant
+                value:
+                  useremail: mail@example.com
+                  history:
+                    - role: user
+                      content: Who are the main contact of the VSG application ?
+              task_assistant:
+                summary: Task Assistant
+                value:
+                  useremail: mail@example.com
+                  variables:
+                    variable_1: value_1
+                    reference_video: https://drive.google.com/file/d/...
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesOutputREST'
+              examples:
+                answer_with_source:
+                  summary: Assistant response with sources
+                  value:
+                    history:
+                      - role: user
+                        content: Who are the main contact of the VSG application ?
+                      - role: assistant
+                        content: The main contact for the VSG application is the Product Manager, Noemie Sayada
+                    sources:
+                      - name: Connecting to Your VSG Agents DOC (1).pdf
+                        source: source_5_0
+                        title: Connecting to Your VSG Agents DOC (1).pdf
+                        page: '1'
+                        url: https://drive.google.com/file/d/1w_4TOELVx1PXTuMjTBpw28TPnZBGylo5
+                        content: '...'
+                    usage:
+                      input_tokens: 5448
+                      output_tokens: 51
+                    metadata:
+                      llm_type: SLM
+                      agent_name: MyAssistant
+                      agent_version: 1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assistant/answer_sse/{assistant_name}:
+    post:
+      tags:
+        - Agents
+      summary: Answer Sse Assistant
+      description: Generate an answer sse from assistant.
+      operationId: answer_sse_assistant_assistant_answer_sse__assistant_name__post
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+        - name: version
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Version
+        - name: message_format
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Message Format
+        - name: persist_thread
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: If true, persist the conversation as a thread in Firestore.
+            default: false
+            title: Persist Thread
+          description: If true, persist the conversation as a thread in Firestore.
+        - name: thread_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+            title: Thread Id
+          description: Existing thread ID to append to. If not provided and persist_thread is true, a new thread is created.
+        - name: debug
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Debug
+        - name: x-vsg-google-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+            title: X-Vsg-Google-Access-Token
+          description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+        - name: x-bigquery-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: BigQuery Access Token. Only required if the agents needs access to BigQuery.
+            deprecated: true
+            title: X-Bigquery-Access-Token
+          description: BigQuery Access Token. Only required if the agents needs access to BigQuery.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+          deprecated: true
+        - name: x-vsg-google-refresh-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+            title: X-Vsg-Google-Refresh-Token
+          description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: If using `gcloud auth login`, you can find the refresh token in the `credentials.db` file located at `~/.config/gcloud/credentials.db`.
+              value: 1//03qW8dIWIeC.......
+            gcloud application-default:
+              summary: Get the refresh token from application-defaults.json
+              description: If using `gcloud auth application-default login`, you can find the refresh token in the `application-defaults.json` file located at `~/.config/gcloud/application-defaults.json`.
+              value: 1//03qW8dIWIeC.......
+            python:
+              summary: Get the refresh token using Python
+              description: |2-
+
+                You can get the refresh token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                refresh_token = credentials.refresh_token
+                ```
+                                
+              value: 1//03qW8dIWIeC.......
+            app script:
+              summary: Get the refresh token using Google Apps Script
+              description: |2-
+
+                Google Apps Script does not provide a way to get the refresh token natively. 
+                But as the access token is generated in the same script, there should not be refresh issue.
+                        
+              value: 1//03qW8dIWIeC.......
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessagesInput'
+            examples:
+              standard_assistant:
+                summary: Standard Assistant
+                value:
+                  useremail: mail@example.com
+                  history:
+                    - role: user
+                      content: Who are the main contact of the VSG application ?
+              task_assistant:
+                summary: Task Assistant
+                value:
+                  useremail: mail@example.com
+                  variables:
+                    variable_1: value_1
+                    reference_video: https://drive.google.com/file/d/...
+      responses:
+        '200':
+          description: Successful Response - SSE stream of answers
+          content:
+            text/event-stream:
+              examples:
+                data:
+                  summary: Data chunks
+                  value: |-
+                    event: stream
+                    data: Content of the chunk
+                structured_answer:
+                  summary: Structured answer (when response_format is provided)
+                  value: |-
+                    event: structured_answer
+                    data: {"first_name": "Jean-Michel", "last_name": "Jarre", "genre": "Electronic"}
+                history:
+                  summary: Conversation history
+                  value: |-
+                    event: history
+                    data: [ { "role": "user", "content": "Who are the main contact of the VSG application ?" }, { "role": "assistant", "content": "..." } ]
+                sources:
+                  summary: Source documents
+                  value: |-
+                    event: sources
+                    data: ['{ "source": "source_5_0", "title": "Connecting to Your VSG Agents DOC (1).pdf", "page": "1", "url": "https://drive.google.com/file/d/1w_4TOELVx1PXTuMjTBpw28TPnZBGylo5", "text": "..." }']
+                plotly:
+                  summary: Plotly data
+                  value: |-
+                    event: plotly
+                    data: {...}
+                usage:
+                  summary: Token usage
+                  value: |-
+                    event: usage
+                    data: {"input_tokens": 5448, "output_tokens": 51}
+                metadata:
+                  summary: Metadata information
+                  value: |-
+                    event: metadata
+                    data: {"llm_type": "SLM", "agent_name": "MyAssistant", "agent_version": 1}
+                thread_id:
+                  summary: Thread ID (only when persist_thread=true)
+                  value: |-
+                    event: thread_id
+                    data: {"thread_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
+                debug_cot:
+                  summary: Debug chain-of-thought (when debug=true)
+                  value: |-
+                    event: debug_cot
+                    data: [{"type": "human", "content": "..."}, {"type": "ai", "content": "..."}]
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /assistant/answer/{assistant_name}/analysis/{analysis_id}:
+    post:
+      tags:
+        - Agents
+      summary: Answer Matrix Assistant Analysis
+      description: Generate an answer from an analysis of matrix assistant.
+      operationId: answer_matrix_assistant_analysis_assistant_answer__assistant_name__analysis__analysis_id__post
+      parameters:
+        - name: assistant_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Assistant Name
+        - name: analysis_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Analysis Id
+        - name: version
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Version
+        - name: x-vsg-google-access-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+            title: X-Vsg-Google-Access-Token
+          description: Google Access Token. Only required if the agents needs access to Google services like BigQuery and Workspace and if the agent has a dynamic welcome message.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth print-access-token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            gcloud application-default:
+              summary: Get the access token from gcloud if using the application-default credentials
+              description: |2-
+
+                You can get the access token by running the following command:
+
+                ```bash
+                gcloud auth application-default login --scopes https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/bigquery.readonly,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/bigquery.insertdata,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/directory.readonly,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.memberships.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/chat.messages.create,https://www.googleapis.com/auth/chat.users.readstate.readonly,https://www.googleapis.com/auth/maps-platform.mapstools
+
+                gcloud auth application-default print-access-token 
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            python:
+              summary: Get the access token using Python
+              description: |2-
+
+                You can get the access token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/bigquery.readonly', 'https://www.googleapis.com/auth/devstorage.read_only', 'https://www.googleapis.com/auth/bigquery.insertdata', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/gmail.compose', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/directory.readonly', 'https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly', 'https://www.googleapis.com/auth/chat.memberships.readonly', 'https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.messages.create', 'https://www.googleapis.com/auth/chat.users.readstate.readonly', 'https://www.googleapis.com/auth/maps-platform.mapstools'])
+
+                credentials.refresh(Request())
+                access_token = credentials.token
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+            app script:
+              summary: Get the access token using Google Apps Script
+              description: |2-
+
+                Make sure the script have the required scopes by setting the `oauthScopes` of your appscript.json file.
+
+                ```json
+                    {
+                        ...
+                        "oauthScopes": [
+                            https://www.googleapis.com/auth/userinfo.profile, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/bigquery.readonly, https://www.googleapis.com/auth/devstorage.read_only, https://www.googleapis.com/auth/bigquery.insertdata, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file, https://www.googleapis.com/auth/gmail.compose, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/directory.readonly, https://www.googleapis.com/auth/contacts.readonly, https://www.googleapis.com/auth/chat.spaces.readonly, https://www.googleapis.com/auth/chat.memberships.readonly, https://www.googleapis.com/auth/chat.messages.readonly, https://www.googleapis.com/auth/chat.messages.create, https://www.googleapis.com/auth/chat.users.readstate.readonly, https://www.googleapis.com/auth/maps-platform.mapstools
+                        ],
+                       ...
+                    }
+                ```
+                        
+                You can get the access token by using the following Google Apps Script code:
+
+                ```javascript
+                var token = ScriptApp.getOAuthToken();
+                ```
+                                
+              value: ya29.c.c0ASRK0Ga.......
+        - name: x-vsg-google-refresh-token
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+            title: X-Vsg-Google-Refresh-Token
+          description: Google Refresh Token. Only required when also using the access token header if the provided access token may expire during the request.
+          examples:
+            gcloud with personal token:
+              summary: Get the access token from gcloud
+              description: If using `gcloud auth login`, you can find the refresh token in the `credentials.db` file located at `~/.config/gcloud/credentials.db`.
+              value: 1//03qW8dIWIeC.......
+            gcloud application-default:
+              summary: Get the refresh token from application-defaults.json
+              description: If using `gcloud auth application-default login`, you can find the refresh token in the `application-defaults.json` file located at `~/.config/gcloud/application-defaults.json`.
+              value: 1//03qW8dIWIeC.......
+            python:
+              summary: Get the refresh token using Python
+              description: |2-
+
+                You can get the refresh token by using the Google Auth library in Python:
+
+                ```python
+                from google.auth import default
+
+                credentials, project = default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                refresh_token = credentials.refresh_token
+                ```
+                                
+              value: 1//03qW8dIWIeC.......
+            app script:
+              summary: Get the refresh token using Google Apps Script
+              description: |2-
+
+                Google Apps Script does not provide a way to get the refresh token natively. 
+                But as the access token is generated in the same script, there should not be refresh issue.
+                        
+              value: 1//03qW8dIWIeC.......
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessagesInput'
+            examples:
+              standard_assistant:
+                summary: Standard Assistant
+                value:
+                  useremail: mail@example.com
+                  history:
+                    - role: user
+                      content: Who are the main contact of the VSG application ?
+              task_assistant:
+                summary: Task Assistant
+                value:
+                  useremail: mail@example.com
+                  variables:
+                    variable_1: value_1
+                    reference_video: https://drive.google.com/file/d/...
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesOutputREST'
+              examples:
+                answer_with_source:
+                  summary: Assistant response with sources
+                  value:
+                    history:
+                      - role: user
+                        content: Who are the main contact of the VSG application ?
+                      - role: assistant
+                        content: The main contact for the VSG application is the Product Manager, Noemie Sayada
+                    sources:
+                      - name: Connecting to Your VSG Agents DOC (1).pdf
+                        source: source_5_0
+                        title: Connecting to Your VSG Agents DOC (1).pdf
+                        page: '1'
+                        url: https://drive.google.com/file/d/1w_4TOELVx1PXTuMjTBpw28TPnZBGylo5
+                        content: '...'
+                    usage:
+                      input_tokens: 5448
+                      output_tokens: 51
+                    metadata:
+                      llm_type: SLM
+                      agent_name: MyAssistant
+                      agent_version: 1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /oauth/login:
+    get:
+      tags:
+        - OAuth
+      summary: Oauth Login
+      description: |-
+        Start the Google OAuth flow.
+
+        Returns ``{ "auth_url": "..." }`` — the frontend opens this URL.
+
+        **With callback mode** (``OAUTH_GOOGLE_CALLBACK_URL`` is set):
+        Google redirects to a single public callback endpoint that exchanges the
+        code and redirects the browser back to ``redirect_uri`` with tokens in the
+        URL fragment.  Only the callback URL needs to be registered in Google
+        Cloud Console.
+
+        **Without callback mode** (legacy):
+        Google redirects directly to ``redirect_uri`` (which must be registered in
+        Google Cloud Console).  The frontend then calls ``POST /oauth/token``.
+      operationId: oauth_login_oauth_login_get
+      parameters:
+        - name: scopes
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - https://www.googleapis.com/auth/userinfo.profile
+              - https://www.googleapis.com/auth/userinfo.email
+              - https://www.googleapis.com/auth/bigquery.readonly
+              - https://www.googleapis.com/auth/devstorage.read_only
+              - https://www.googleapis.com/auth/bigquery.insertdata
+              - https://www.googleapis.com/auth/drive.readonly
+              - https://www.googleapis.com/auth/drive.file
+              - https://www.googleapis.com/auth/gmail.compose
+              - https://www.googleapis.com/auth/gmail.readonly
+              - https://www.googleapis.com/auth/calendar
+              - https://www.googleapis.com/auth/directory.readonly
+              - https://www.googleapis.com/auth/contacts.readonly
+              - https://www.googleapis.com/auth/chat.spaces.readonly
+              - https://www.googleapis.com/auth/chat.memberships.readonly
+              - https://www.googleapis.com/auth/chat.messages.readonly
+              - https://www.googleapis.com/auth/chat.messages.create
+              - https://www.googleapis.com/auth/chat.users.readstate.readonly
+              - https://www.googleapis.com/auth/maps-platform.mapstools
+            title: Scopes
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Redirect Uri
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /oauth/token:
+    post:
+      tags:
+        - OAuth
+      summary: Oauth Token
+      description: |-
+        Exchange an authorization code for tokens.
+
+        The frontend extracts ``code`` from the Google redirect URL and sends it
+        here along with the same ``redirect_uri`` used in ``/oauth/login``.
+      operationId: oauth_token_oauth_token_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /oauth/refresh:
+    post:
+      tags:
+        - OAuth
+      summary: Oauth Refresh
+      description: Exchange a refresh_token for a new set of tokens.
+      operationId: oauth_refresh_oauth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Body_oauth_refresh_oauth_refresh_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /translate:
+    post:
+      tags:
+        - Translate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              title: Text
+              description: >-
+                For more details on available language and translation style, please visit
+                [here](https://translate.veolia.chat/)
+              required:
+                - text
+                - usermail
+              type: object
+              properties:
+                text:
+                  title: Text to translate
+                  description: Text to translate
+                  type: string
+                language_source:
+                  title: Language source
+                  description: Text Language source
+                  default: auto-detect
+                  type: string
+                language_target:
+                  title: Language target
+                  description: Text Language target
+                  default: english
+                  type: string
+                translation_style:
+                  title: Translation style
+                  description: >-
+                    Level of language for the traduction (friend, colleague, customer,
+                    partner, legal etc...), "none" for default translation
+                  default: none
+                  type: string
+                usermail:
+                  title: User mail
+                  description: User mail
+                  type: string
+            examples:
+              Example 1:
+                value:
+                  text: string
+                  language_source: auto-detect
+                  language_target: english
+                  translation_style: none
+                  usermail: veolia.mock@veolia.com
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                title: HTTPValidationError
+                type: object
+                properties:
+                  detail:
+                    title: Detail
+                    type: array
+                    items:
+                      title: ValidationError
+                      required:
+                        - loc
+                        - msg
+                        - type
+                      type: object
+                      properties:
+                        loc:
+                          title: Location
+                          type: array
+                          items:
+                            anyOf:
+                              - type: string
+                              - type: integer
+                        msg:
+                          title: Message
+                          type: string
+                        type:
+                          title: Error Type
+                          type: string
+          description: Validation Error
+      operationId: translate_translate_post
+      summary: Translate
+      description: >-
+        Endpoint to synchronously translate a text in any of the 95 supported languages (English by
+        default)
+  /kb/{knowledge_kb}/answer:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Answer
+      operationId: answer_kb__knowledge_kb__answer_post
+      parameters:
+        - name: knowledge_kb
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Knowledge Kb
+        - name: target_project
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Target Project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kb/{knowledge_kb}/sse_answer:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Stream
+      operationId: stream_kb__knowledge_kb__sse_answer_post
+      parameters:
+        - name: knowledge_kb
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Knowledge Kb
+        - name: deepchat
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Deepchat
+        - name: target_project
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Target Project
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kb/list:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Knowledge Kb List
+      operationId: knowledge_kb_list_kb_list_post
+      parameters:
+        - name: target_project
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Target Project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEmail'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kb/metadata/{knowledge_kb}:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Knowledge Kb Metadata List
+      operationId: knowledge_kb_metadata_list_kb_metadata__knowledge_kb__post
+      parameters:
+        - name: knowledge_kb
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Knowledge Kb
+        - name: target_project
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Target Project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEmail'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /kb/metadata/{knowledge_kb}/{metadata}:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Knowledge Kb Metadata Values
+      operationId: knowledge_kb_metadata_values_kb_metadata__knowledge_kb___metadata__post
+      parameters:
+        - name: knowledge_kb
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Knowledge Kb
+        - name: metadata
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Metadata
+        - name: target_project
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Target Project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserEmail'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AssistantConfigurationVariablesResponse:
+      properties:
+        variables:
+          items:
+            $ref: '#/components/schemas/TaskVariable'
+          type: array
+          title: Variables
+      type: object
+      required:
+        - variables
+      title: AssistantConfigurationVariablesResponse
+    AssistantMode:
+      type: string
+      enum:
+        - Standard
+        - Task
+        - Matrix
+      title: AssistantMode
+    AssistantPromptRequest:
+      properties:
+        variables:
+          additionalProperties:
+            anyOf:
+              - type: string
+              - $ref: '#/components/schemas/AssistantPromptRequestVariableWithLocales'
+          type: object
+          title: Variables
+      type: object
+      title: AssistantPromptRequest
+    AssistantPromptRequestVariableWithLocales:
+      properties:
+        url:
+          type: string
+          title: Url
+        locales:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Locales
+      type: object
+      required:
+        - url
+      title: AssistantPromptRequestVariableWithLocales
+    AssistantResponse:
+      properties:
+        assistant_name:
+          type: string
+          title: Assistant Name
+        display_name:
+          type: string
+          title: Display Name
+        matrix_bucket_name:
+          anyOf:
+            - type: string
+              maxLength: 63
+              minLength: 3
+            - type: 'null'
+          title: Matrix Bucket Name
+        mode:
+          $ref: '#/components/schemas/AssistantMode'
+        assistant_goal:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Assistant Goal
+        welcome_message:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Welcome Message
+        key_subjects:
+          items:
+            anyOf:
+              - type: string
+              - type: string
+                format: uuid
+          type: array
+          title: Key Subjects
+        owners:
+          items:
+            type: string
+          type: array
+          title: Owners
+        readers_google_group:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Readers Google Group
+        readers:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Readers
+        email_notification_enabled:
+          type: boolean
+          title: Email Notification Enabled
+          default: true
+        is_public:
+          type: boolean
+          title: Is Public
+        configuration:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Configuration
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Updated At
+        can_edit:
+          type: boolean
+          title: Can Edit
+        can_publish:
+          type: boolean
+          title: Can Publish
+        version:
+          type: integer
+          title: Version
+        version_name:
+          type: string
+          maxLength: 40
+          title: Version Name
+          default: ''
+        version_description:
+          type: string
+          title: Version Description
+          default: ''
+        is_published:
+          type: boolean
+          title: Is Published
+        bu_code:
+          type: string
+          title: Bu Code
+        icon_name:
+          type: string
+          title: Icon Name
+        jobs:
+          items:
+            anyOf:
+              - type: string
+              - type: string
+                format: uuid
+          type: array
+          title: Jobs
+          default: []
+        is_bookmarked:
+          type: boolean
+          title: Is Bookmarked
+          default: false
+        criteria:
+          items:
+            additionalProperties:
+              anyOf:
+                - type: string
+                - type: integer
+            type: object
+          type: array
+          title: Criteria
+        auth_providers:
+          anyOf:
+            - items:
+                additionalProperties: true
+                type: object
+              type: array
+            - type: 'null'
+          title: Auth Providers
+      type: object
+      required:
+        - assistant_name
+        - display_name
+        - mode
+        - assistant_goal
+        - welcome_message
+        - key_subjects
+        - owners
+        - readers_google_group
+        - is_public
+        - configuration
+        - created_at
+        - can_edit
+        - can_publish
+        - version
+        - is_published
+        - bu_code
+        - icon_name
+      title: AssistantResponse
+    AssistantWelcomeMessageMetadataResponse:
+      properties:
+        llm_type:
+          anyOf:
+            - $ref: '#/components/schemas/LLMType'
+            - type: 'null'
+        agent_name:
+          type: string
+          title: Agent Name
+        agent_version:
+          type: integer
+          title: Agent Version
+      type: object
+      required:
+        - agent_name
+        - agent_version
+      title: AssistantWelcomeMessageMetadataResponse
+    AssistantWelcomeMessageResponse:
+      properties:
+        welcome_message:
+          type: string
+          title: Welcome Message
+        usage:
+          $ref: '#/components/schemas/AssistantWelcomeMessageUsageResponse'
+        metadata:
+          $ref: '#/components/schemas/AssistantWelcomeMessageMetadataResponse'
+      type: object
+      required:
+        - welcome_message
+        - usage
+        - metadata
+      title: AssistantWelcomeMessageResponse
+    AssistantWelcomeMessageUsageResponse:
+      properties:
+        input_tokens:
+          type: integer
+          title: Input Tokens
+        output_tokens:
+          type: integer
+          title: Output Tokens
+      type: object
+      required:
+        - input_tokens
+        - output_tokens
+      title: AssistantWelcomeMessageUsageResponse
+    Body_oauth_refresh_oauth_refresh_post:
+      properties:
+        refresh_token:
+          type: string
+          title: Refresh Token
+      type: object
+      required:
+        - refresh_token
+      title: Body_oauth_refresh_oauth_refresh_post
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    JsonSchemaProperty:
+      properties:
+        type:
+          anyOf:
+            - type: string
+            - items:
+                type: string
+              type: array
+          title: Type
+          description: JSON Schema type (e.g. 'string', 'number', ['string', 'null']).
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+          description: Human-readable description of the property.
+      additionalProperties: true
+      type: object
+      required:
+        - type
+      title: JsonSchemaProperty
+    LLMType:
+      type: string
+      enum:
+        - SLM
+        - LLM
+      title: LLMType
+    MessageInput:
+      properties:
+        role:
+          $ref: '#/components/schemas/Roles'
+          description: Role of the message. Should be 'user' or 'assistant'.
+        content:
+          anyOf:
+            - type: string
+            - items:
+                anyOf:
+                  - $ref: '#/components/schemas/MultimodalTextMessage'
+                  - $ref: '#/components/schemas/MultimodalFileMessage'
+              type: array
+          title: Content
+          description: Content of the message. Should be a string or a list of multimodal messages.
+      type: object
+      required:
+        - role
+        - content
+      title: MessageInput
+    MessageSource:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+        source:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source
+        kb_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Kb Id
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        page:
+          type: string
+          title: Page
+        url:
+          type: string
+          title: Url
+        content:
+          type: string
+          title: Content
+        application_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Application Name
+        application_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Application Url
+        score:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Score
+      type: object
+      required:
+        - id
+        - name
+        - source
+        - kb_id
+        - title
+        - page
+        - url
+        - content
+        - application_name
+        - application_url
+      title: MessageSource
+    MessagesInput:
+      properties:
+        useremail:
+          type: string
+          title: Useremail
+          description: User email.
+        history:
+          anyOf:
+            - items:
+                $ref: '#/components/schemas/MessageInput'
+              type: array
+            - type: 'null'
+          title: History
+          description: List of messages.
+        variables:
+          additionalProperties:
+            anyOf:
+              - type: string
+              - $ref: '#/components/schemas/AssistantPromptRequestVariableWithLocales'
+          type: object
+          title: Variables
+        system_prompt_variables:
+          additionalProperties:
+            type: string
+          type: object
+          title: System Prompt Variables
+          description: Variables to inject into the assistant's system prompt at request time. Use the pattern {$variable_name} as placeholder in the system prompt.
+        inline_sources:
+          type: boolean
+          title: Inline Sources
+          description: Mentions sources in response text with their IDs if any.
+          default: false
+        mcp_overrides:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Mcp Overrides
+          description: "Runtime overrides for MCP tool calls. Keys matching tool argument names will force their values, regardless of what the LLM sends. Keys matching ${key} placeholders in headers will be substituted. These overrides take priority over the overrides defined in the assistant's McpConfig. Example: {\"latitude\": 36.8065, \"authorization\": \"Bearer abc123\"}"
+        external_tokens:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: External Tokens
+          description: "Tokens obtained by the frontend via external auth flows. Keys are the provider name (e.g. 'snow' for ServiceNow), values are the JWT access tokens. Example: {\"snow\": \"eyJhbGciOi...\"}"
+        response_format:
+          anyOf:
+            - $ref: '#/components/schemas/ResponseFormat'
+            - type: 'null'
+          description: 'Optional JSON Schema describing the desired output format. Example: {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}'
+      type: object
+      required:
+        - useremail
+      title: MessagesInput
+    MessagesOutputMetadataRest:
+      properties:
+        llm_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Llm Type
+        agent_name:
+          type: string
+          title: Agent Name
+        agent_version:
+          type: integer
+          title: Agent Version
+      type: object
+      required:
+        - llm_type
+        - agent_name
+        - agent_version
+      title: MessagesOutputMetadataRest
+    MessagesOutputREST:
+      properties:
+        history:
+          items:
+            additionalProperties:
+              anyOf:
+                - type: string
+                - items:
+                    anyOf:
+                      - type: string
+                      - additionalProperties: true
+                        type: object
+                  type: array
+            type: object
+          type: array
+          title: History
+        sources:
+          items:
+            $ref: '#/components/schemas/MessageSource'
+          type: array
+          title: Sources
+        usage:
+          $ref: '#/components/schemas/MessagesOutputUsageRest'
+        metadata:
+          $ref: '#/components/schemas/MessagesOutputMetadataRest'
+        structured_answer:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Structured Answer
+        thread_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Thread Id
+        debug_cot:
+          anyOf:
+            - items: {}
+              type: array
+            - type: 'null'
+          title: Debug Cot
+      type: object
+      required:
+        - history
+        - sources
+        - usage
+        - metadata
+      title: MessagesOutputREST
+    MessagesOutputUsageRest:
+      properties:
+        input_tokens:
+          type: integer
+          title: Input Tokens
+        output_tokens:
+          type: integer
+          title: Output Tokens
+      type: object
+      required:
+        - input_tokens
+        - output_tokens
+      title: MessagesOutputUsageRest
+    MultiModalImageUrl:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: URL of the image. should be in format data:file_mime_type;base64,encoded_file
+      type: object
+      required:
+        - url
+      title: MultiModalImageUrl
+    MultimodalFileMessage:
+      properties:
+        type:
+          type: string
+          title: Type
+          description: Type of the message. Should be 'image_url'.
+        image_url:
+          $ref: '#/components/schemas/MultiModalImageUrl'
+          description: URL of the file.
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+          description: Optional file name used for skill-handled attachments such as Excel files, CSV files or PowerPoint presentations.
+      type: object
+      required:
+        - type
+        - image_url
+      title: MultimodalFileMessage
+    MultimodalTextMessage:
+      properties:
+        type:
+          type: string
+          title: Type
+          description: Type of the message. Should be 'text'.
+        text:
+          type: string
+          title: Text
+          description: Text content of the message.
+      type: object
+      required:
+        - type
+        - text
+      title: MultimodalTextMessage
+    ResponseFormat:
+      properties:
+        type:
+          type: string
+          const: object
+          title: Type
+          description: Must be 'object'.
+          default: object
+        properties:
+          additionalProperties:
+            $ref: '#/components/schemas/JsonSchemaProperty'
+          type: object
+          minProperties: 1
+          title: Properties
+          description: Map of property names to their JSON Schema definitions.
+      additionalProperties: true
+      type: object
+      required:
+        - properties
+      title: ResponseFormat
+    Roles:
+      type: string
+      enum:
+        - assistant
+        - user
+      title: Roles
+    SuggestedPrompt:
+      properties:
+        title:
+          type: string
+          maxLength: 80
+          title: Title
+          description: Short label shown as a clickable button (max 60 chars recommended)
+        content:
+          type: string
+          maxLength: 800
+          title: Content
+          description: Full prompt text sent when the user clicks this suggestion
+      type: object
+      required:
+        - title
+        - content
+      title: SuggestedPrompt
+    TaskVariable:
+      properties:
+        name:
+          type: string
+          title: Name
+        type:
+          type: string
+          title: Type
+        label:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Label
+      type: object
+      required:
+        - name
+        - type
+      title: TaskVariable
+    TokenRequest:
+      properties:
+        code:
+          type: string
+          title: Code
+        redirect_uri:
+          type: string
+          title: Redirect Uri
+      type: object
+      required:
+        - code
+        - redirect_uri
+      title: TokenRequest
+    User:
+      properties:
+        identifier:
+          type: string
+          title: Identifier
+        display_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Display Name
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+        - identifier
+      title: User
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+    ChatRequest:
+      properties:
+        temperature:
+          type: number
+          maximum: 2.0
+          minimum: 0.0
+          title: Temperature
+          default: 0.1
+          example: 0.1
+        model:
+          $ref: '#/components/schemas/Models'
+          default: anthropic.claude-v4.5
+          example: anthropic.claude-v4.5
+        useremail:
+          type: string
+          title: Useremail
+          example: realuser@veolia.com
+        include_sources:
+          type: boolean
+          title: Include Sources
+          default: false
+          example: true
+        response_format:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Response Format
+          description: JSON schema for structured output (standard JSON Schema format)
+          example:
+            additionalProperties: false
+            properties:
+              first_name:
+                description: First name of the artist
+                type: string
+              last_name:
+                description: Last name of the artist
+                type: string
+              birth_date:
+                description: Birth date (YYYY-MM-DD)
+                type: string
+              country:
+                description: Country of origin
+                type: string
+              genre:
+                description: Music genre
+                type: string
+              career_start:
+                description: Year career started (YYYY)
+                type: string
+              notable_albums:
+                description: List of notable albums
+                items:
+                  type: string
+                type: array
+            required:
+              - first_name
+              - last_name
+              - birth_date
+              - country
+              - genre
+              - career_start
+            title: ArtistInfo
+            type: object
+        legacy_format:
+          type: boolean
+          title: Legacy Format
+          default: false
+          example: false
+        history:
+          items:
+            $ref: '#/components/schemas/MessageHistory'
+          type: array
+          title: History
+          example:
+            - content: how are you today?
+              role: user
+      type: object
+      required:
+        - useremail
+        - history
+      title: ChatRequest
+    ListModelsResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+        data:
+          items:
+            $ref: '#/components/schemas/ListModelsResponseData'
+          type: array
+          title: Data
+      type: object
+      required:
+        - object
+        - data
+      title: ListModelsResponse
+    ListModelsResponseData:
+      properties:
+        id:
+          type: string
+          title: Id
+        object:
+          type: string
+          const: model
+          title: Object
+        owned_by:
+          type: string
+          title: Owned By
+      type: object
+      required:
+        - id
+        - object
+        - owned_by
+      title: ListModelsResponseData
+    MessageHistory:
+      properties:
+        role:
+          $ref: '#/components/schemas/Roles'
+          example: user
+        content:
+          anyOf:
+            - type: string
+            - items:
+                anyOf:
+                  - $ref: '#/components/schemas/MultimodalTextElement'
+                  - $ref: '#/components/schemas/MultimodalFileElement'
+              type: array
+          title: Content
+          example: how are you today?
+      type: object
+      required:
+        - role
+        - content
+      title: MessageHistory
+      description: MessageHistory model.
+    Models:
+      type: string
+      enum:
+        - amazon.nova-lite-v1:0
+        - amazon.nova-lite-v2:0
+        - amazon.nova-pro-v1:0
+        - amazon.nova-pro-v2:0
+        - anthropic.claude-fable-5
+        - anthropic.claude-opus-v4.6
+        - anthropic.claude-opus-v4.7
+        - anthropic.claude-opus-v4.8
+        - anthropic.claude-sonnet-4.6
+        - anthropic.claude-sonnet-5
+        - anthropic.claude-v2
+        - anthropic.claude-v3
+        - anthropic.claude-v3.5
+        - anthropic.claude-v3.5-haiku
+        - anthropic.claude-v3.7
+        - anthropic.claude-v4
+        - anthropic.claude-v4.5
+        - anthropic.claude-v4.5-haiku
+        - automatic.choice
+        - codestral-latest
+        - deepseek-v4-flash
+        - deepseek-v4-pro
+        - gemini-2.0-flash
+        - gemini-2.5-flash
+        - gemini-2.5-flash-lite
+        - gemini-2.5-pro
+        - gemini-3-flash-preview
+        - gemini-3.1-pro-preview
+        - gemini-3.5-flash
+        - gemini-flash-1.5
+        - gemini-pro
+        - gemini-pro-vision-1.0
+        - gemini-pro-vision-1.5
+        - gpt-35-turbo-16k
+        - gpt-4
+        - gpt-4-turbo
+        - gpt-4.1
+        - gpt-4.1-mini
+        - gpt-4.1-nano
+        - gpt-4o
+        - gpt-4o-mini
+        - gpt-5
+        - gpt-5-chat
+        - gpt-5-mini
+        - gpt-5-nano
+        - gpt-5.1
+        - gpt-5.2
+        - gpt-5.4
+        - gpt-5.4-mini
+        - gpt-5.4-nano
+        - kimi-k2.6
+        - llama-3.1-sonar-huge-128k-online
+        - llama-3.1-sonar-large-128k-online
+        - meta.llama2-13b-chat-v1
+        - meta.llama2-70b-chat-v1
+        - meta.llama3-1-405b-instruct-v1:0
+        - meta.llama3-1-70b-instruct-v1:0
+        - meta.llama3-70b-instruct-v1
+        - meta.llama3-70b-instruct-v1:0
+        - meta.llama3-8b-instruct-v1
+        - meta.llama3-8b-instruct-v1:0
+        - mistral-large-2512
+        - mistral-medium-latest
+        - mistral.mistral-7b-instruct-v0:2
+        - mistral.mistral-large-2402-v1:0
+        - mistral.mistral-large-2407-v1:0
+        - mistral.mistral-small
+        - mistral.mixtral-8x7b-instruct-v0:1
+        - mistral.pixtral-large
+        - us.meta.llama3-3-70b-instruct-v1:0
+      title: Models
+    MultimodalFileElement:
+      properties:
+        type:
+          type: string
+          title: Type
+          example: image_url
+        image_url:
+          $ref: '#/components/schemas/MultimodalUrlElement'
+      type: object
+      required:
+        - type
+        - image_url
+      title: MultimodalFileElement
+    MultimodalTextElement:
+      properties:
+        type:
+          type: string
+          title: Type
+          example: text
+        text:
+          type: string
+          title: Text
+          example: c'est quoi ?
+      type: object
+      required:
+        - type
+        - text
+      title: MultimodalTextElement
+    MultimodalUrlElement:
+      properties:
+        url:
+          type: string
+          title: Url
+          examples:
+            - gs://vsg_file_qa_ephemeral_content-dev/temppdf/S6GuUKOM81.pdf
+            - data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAKZAJtZGF0AAACrwYF/....
+            - data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQACAgIAOkNzlgAAAAAAAAAAAAAAAASAAAAd29yZ...
+            - data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,UEsDBBQACAgI...
+            - data:application/pdf;base64,JVBERi0xLjQKJcfs...
+            - data:text/csv;base64,SGVsbG8sIFdvcmxkCg==
+            - data:application/msword;base64,0M8R4KGxGuEAAAA...
+            - data:application/vnd.ms-excel;base64,UEsFBgAAAA...
+            - data:text/html;base64,PGh0bWw+PGhlYWQ+PC9oZWFk...
+            - data:text/plain;base64,SGVsbG8gd29ybGQ=
+            - data:text/markdown;base64,IyBIZWxsbyBXb3JsZA==
+            - data:application/octet-stream;base64,AAECAwQFBgcICQoLDA0ODw==
+            - data:video/x-flv;base64,AAAAFGZ0eXBmbHYgAAABAA...
+            - data:video/quicktime;base64,AAAAHGZ0eXBxdCAgAA...
+            - data:video/mpeg;base64,AAAAIGZ0eXBtcGVnAA...
+            - data:video/mpegps;base64,AAAAIGZ0eXBtcGVncHM...
+            - data:video/mpg;base64,AAAAIGZ0eXBtcGcAA...
+            - data:video/webm;base64,AAAAIGZ0eXB3ZWJtAA...
+            - data:video/wmv;base64,AAAAIGZ0eXB3bXYAA...
+            - data:video/3gpp;base64,AAAAIGZ0eXAzZ3BwAA...
+            - data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...
+            - data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+            - data:image/gif;base64,R0lGODlhPQBEAPeoAJosM//AwO...
+            - data:image/webp;base64,UklGRiIAAABXRUJQVlA4TAYAAA...
+      type: object
+      required:
+        - url
+      title: MultimodalUrlElement
+    OpenAIChatCompletionRequest:
+      properties:
+        model:
+          type: string
+          title: Model
+        messages:
+          items:
+            $ref: '#/components/schemas/OpenAIChatMessage'
+          type: array
+          title: Messages
+        temperature:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Temperature
+        max_tokens:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Max Tokens
+        max_completion_tokens:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Max Completion Tokens
+        stream:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Stream
+          default: false
+        stream_options:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Stream Options
+        tools:
+          anyOf:
+            - items:
+                $ref: '#/components/schemas/OpenAITool'
+              type: array
+            - type: 'null'
+          title: Tools
+        tool_choice:
+          anyOf:
+            - type: string
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Tool Choice
+        user:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: User
+        response_format:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Response Format
+        stop:
+          anyOf:
+            - type: string
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Stop
+        frequency_penalty:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Frequency Penalty
+          default: 0.0
+        presence_penalty:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Presence Penalty
+          default: 0.0
+      type: object
+      required:
+        - model
+        - messages
+      title: OpenAIChatCompletionRequest
+    OpenAIChatMessage:
+      properties:
+        role:
+          type: string
+          title: Role
+        content:
+          anyOf:
+            - type: string
+            - items:
+                additionalProperties: true
+                type: object
+              type: array
+            - type: 'null'
+          title: Content
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        tool_calls:
+          anyOf:
+            - items:
+                $ref: '#/components/schemas/OpenAIToolCall'
+              type: array
+            - type: 'null'
+          title: Tool Calls
+        tool_call_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tool Call Id
+      type: object
+      required:
+        - role
+      title: OpenAIChatMessage
+    OpenAIFunction:
+      properties:
+        name:
+          type: string
+          title: Name
+        arguments:
+          type: string
+          title: Arguments
+      type: object
+      required:
+        - name
+        - arguments
+      title: OpenAIFunction
+    OpenAITool:
+      properties:
+        type:
+          type: string
+          const: function
+          title: Type
+          default: function
+        function:
+          additionalProperties: true
+          type: object
+          title: Function
+      type: object
+      required:
+        - function
+      title: OpenAITool
+    OpenAIToolCall:
+      properties:
+        id:
+          type: string
+          title: Id
+        type:
+          type: string
+          const: function
+          title: Type
+          default: function
+        function:
+          $ref: '#/components/schemas/OpenAIFunction'
+      type: object
+      required:
+        - id
+        - function
+      title: OpenAIToolCall
+    SSEChatRequest:
+      properties:
+        temperature:
+          type: number
+          maximum: 2.0
+          minimum: 0.0
+          title: Temperature
+          default: 0.1
+          example: 0.1
+        model:
+          $ref: '#/components/schemas/Models'
+          default: anthropic.claude-v4.5
+          example: anthropic.claude-v4.5
+        useremail:
+          type: string
+          title: Useremail
+          example: realuser@veolia.com
+        include_sources:
+          type: boolean
+          title: Include Sources
+          default: false
+          example: true
+        response_format:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Response Format
+          description: JSON schema for structured output (standard JSON Schema format)
+          example:
+            additionalProperties: false
+            properties:
+              first_name:
+                description: First name of the artist
+                type: string
+              last_name:
+                description: Last name of the artist
+                type: string
+              birth_date:
+                description: Birth date (YYYY-MM-DD)
+                type: string
+              country:
+                description: Country of origin
+                type: string
+              genre:
+                description: Music genre
+                type: string
+              career_start:
+                description: Year career started (YYYY)
+                type: string
+              notable_albums:
+                description: List of notable albums
+                items:
+                  type: string
+                type: array
+            required:
+              - first_name
+              - last_name
+              - birth_date
+              - country
+              - genre
+              - career_start
+            title: ArtistInfo
+            type: object
+        legacy_format:
+          type: boolean
+          title: Legacy Format
+          default: false
+          example: false
+        messages:
+          items:
+            $ref: '#/components/schemas/SSEMessageHistory'
+          type: array
+          title: Messages
+          example:
+            - role: user
+              text: how are you today?
+      type: object
+      required:
+        - useremail
+        - messages
+      title: SSEChatRequest
+    SSEMessageHistory:
+      properties:
+        text:
+          anyOf:
+            - type: string
+            - items:
+                anyOf:
+                  - $ref: '#/components/schemas/MultimodalTextElement'
+                  - $ref: '#/components/schemas/MultimodalFileElement'
+              type: array
+          title: Text
+          example: how are you today?
+        role:
+          $ref: '#/components/schemas/Roles'
+          example: user
+      type: object
+      required:
+        - text
+        - role
+      title: SSEMessageHistory
+    Message:
+      properties:
+        role:
+          $ref: '#/components/schemas/Roles'
+          example: user
+        text:
+          type: string
+          title: Text
+          example: how are you today?
+      type: object
+      required:
+        - role
+        - text
+      title: Message
+      description: Message model.
+    UserEmail:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          example: email@veolia.com
+      type: object
+      required:
+        - email
+      title: UserEmail
+      description: User email model.
+  securitySchemes:
+    VeoliaOauth2Security:
+      flows:
+        clientCredentials:
+          tokenUrl: "https://api.veolia.com/security/v2/oauth/token"
+          refreshUrl: "https://api.veolia.com/security/v2/oauth/refresh_token"
+      type: oauth2
+security:
+  - VeoliaOauth2Security: []
