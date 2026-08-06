@@ -107,6 +107,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--temperature", type=float, default=0.2, help="Sampling temperature (0-2).")
     parser.add_argument("--pdf", type=Path, help="PDF attachment to include with the prompt.")
+    parser.add_argument(
+        "--generate_md",
+        action="store_true",
+        help="Use extraction_prompt.md as the prompt for a PDF attachment.",
+    )
     parser.add_argument("--list-models", action="store_true", help="List accessible model IDs.")
     return parser.parse_args()
 
@@ -114,6 +119,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     load_env_file(Path(".env"))
     args = parse_args()
+
+    pdf_prompt = args.prompt
+    if args.pdf and args.generate_md:
+        extraction_prompt_path = Path("extraction_prompt.md")
+        if not extraction_prompt_path.is_file():
+            print("Missing extraction_prompt.md in the project root.", file=sys.stderr)
+            return 2
+        try:
+            pdf_prompt = extraction_prompt_path.read_text(encoding="utf-8")
+        except OSError as error:
+            print(f"Unable to read extraction_prompt.md: {error}", file=sys.stderr)
+            return 2
 
     client_id = os.getenv("VSGPT_CLIENT_ID")
     client_secret = os.getenv("VSGPT_CLIENT_SECRET")
@@ -123,7 +140,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    if not args.list_models and not args.prompt:
+    if not args.list_models and not pdf_prompt:
         print("Provide a prompt or use --list-models.", file=sys.stderr)
         return 2
     if not args.list_models and not args.user_email:
@@ -152,7 +169,7 @@ def main() -> int:
         content: str | list[dict[str, Any]] = args.prompt
         if args.pdf:
             content = [
-                {"type": "text", "text": args.prompt},
+                {"type": "text", "text": pdf_prompt},
                 {"type": "image_url", "image_url": {"url": encode_pdf(args.pdf)}},
             ]
 
