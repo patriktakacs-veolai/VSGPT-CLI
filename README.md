@@ -106,3 +106,60 @@ PDF csatolásakor a kliens automatikusan a dokumentumfeldolgozást támogató `/
 | `--temperature` | Float (0.0 - 2.0) | Mintavételezési hőmérséklet (kreativitási tényező). | `0.2` |
 | `--pdf` | Fájlútvonal | A kérdéshez csatolandó PDF dokumentum. | Nincs |
 | `--list-models` | Flag | Kilistázza a fiókkal elérhető modellek azonosítóit. | `False` |
+| `--scan-directory PATH` | Fájlútvonal | Kilistázza a RAG ETL számára új fájlokat. | Nincs |
+| `--scanner-db PATH` | Fájlútvonal | A scanner SQLite állapotadatbázisának útvonala. | `scanner_state.sqlite` |
+
+---
+
+## 6. Dokumentum-szkenner RAG ETL folyamathoz
+
+A `document_scanner.py` a RAG adat-előkészítő folyamat első, **Scanner** lépését valósítja meg. A `DocumentScanner` rekurzívan bejárja a megadott könyvtárat, minden fájlhoz 64 KB-os blokkokban SHA-256 hash-t számol, majd az SQLite állapotadatbázis alapján kiválasztja az új tartalmú fájlokat.
+
+Az állapotadatbázis a megadott `db_path` helyen jön létre. Tartalmazza a `processed_files` táblát az alábbi mezőkkel: `id`, `file_path`, `file_hash` és `processed_at`.
+
+### Használat
+
+```python
+from pathlib import Path
+
+from document_scanner import DocumentScanner
+
+scanner = DocumentScanner(
+    target_dir=Path("test_documents"),
+    db_path=Path("scanner_state.sqlite"),
+)
+
+new_files = scanner.get_unprocessed_files()
+for file_path in new_files:
+    print(file_path)
+```
+
+A `get_unprocessed_files()` abszolút fájlútvonalak listáját adja vissza. A metódus kizárólag olvassa az állapotadatbázist; a hash-ek rögzítését csak egy későbbi, sikeres feldolgozást végző ETL lépésnek kell elvégeznie.
+
+### Parancssori használat
+
+A scanner a meglévő kliens parancsán keresztül is futtatható; ehhez nincs szükség API-hitelesítő adatokra:
+
+```bash
+python connect_to_vsgpt.py --scan-directory "C:\dokumentumok" --scanner-db "C:\rag\scanner_state.sqlite"
+```
+
+A `--scanner-db` elhagyásakor a program az aktuális mappában lévő `scanner_state.sqlite` adatbázist használja. A parancs minden új fájl abszolút útvonalát külön sorban írja ki.
+
+---
+
+## 7. RAG ETL pipeline
+
+A `pipeline.py` összeköti a szkennelést, a Veolia API-n végzett PDF-kinyerést és a RAG staging kimenet előállítását. A pipeline az `extraction_prompt.md` által meghatározott JSON-választ YAML front matterrel és strukturált törzsszöveggel egészíti ki, majd `.txt` fájlként menti a `staging_output` mappába.
+
+```bash
+python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite"
+```
+
+Egyedi kimeneti és prompt-mappa is megadható:
+
+```bash
+python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" --staging-dir "C:\rag\staging_output" --prompt-file "C:\rag\extraction_prompt.md"
+```
+
+A pipeline a jelenlegi API-csatolóval PDF fájlokat dolgoz fel. Sikeres API-hívás, JSON-feldolgozás és staging mentés után a `mark_as_processed()` rögzíti a dokumentum hash-ét és a feldolgozás UTC időpontját. Sikertelen fájl esetén hibaüzenetet ír, de nem jelöli azt feldolgozottnak, ezért a következő futás újra megpróbálhatja.

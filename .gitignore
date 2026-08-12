@@ -3,3 +3,7 @@
 
 # Python cache files
 __pycache__/
+
+# Generated database and staging output
+scanner_state.sqlite
+staging_output/

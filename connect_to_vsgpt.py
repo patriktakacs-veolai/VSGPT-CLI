@@ -6,12 +6,15 @@ import argparse
 import base64
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+from document_scanner import DocumentScanner
 
 
 API_BASE_URL = "https://api.veolia.com/llm/veoliasecuregpt/v1"
@@ -43,7 +46,7 @@ def request_json(
     request = Request(url, data=data, headers=headers, method=method)
 
     try:
-        with urlopen(request, timeout=60) as response:
+        with urlopen(request, timeout=120) as response:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
@@ -113,12 +116,43 @@ def parse_args() -> argparse.Namespace:
         help="Use extraction_prompt.md as the prompt for a PDF attachment.",
     )
     parser.add_argument("--list-models", action="store_true", help="List accessible model IDs.")
+    parser.add_argument(
+        "--scan-directory",
+        type=Path,
+        metavar="PATH",
+        help="List unprocessed files in PATH for the RAG ETL pipeline.",
+    )
+    parser.add_argument(
+        "--scanner-db",
+        type=Path,
+        default=Path("scanner_state.sqlite"),
+        metavar="PATH",
+        help="SQLite state database for --scan-directory (default: scanner_state.sqlite).",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
-    load_env_file(Path(".env"))
     args = parse_args()
+
+    if args.scan_directory:
+        if args.prompt or args.pdf or args.generate_md or args.list_models:
+            print(
+                "--scan-directory cannot be combined with a prompt, PDF options, or --list-models.",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            scanner = DocumentScanner(args.scan_directory, args.scanner_db)
+            for file_path in scanner.get_unprocessed_files():
+                print(file_path)
+        except (OSError, sqlite3.Error, ValueError) as error:
+            print(f"Document scan failed: {error}", file=sys.stderr)
+            return 1
+        return 0
+
+    load_env_file(Path(".env"))
 
     pdf_prompt = args.prompt
     if args.pdf and args.generate_md:

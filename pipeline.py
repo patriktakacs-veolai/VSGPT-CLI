@@ -1,0 +1,306 @@
+"""Orchestrate document extraction and RAG staging-output generation."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sqlite3
+import sys
+import tempfile
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfReadError
+
+from connect_to_vsgpt import (
+    API_BASE_URL,
+    encode_pdf,
+    get_access_token,
+    load_env_file,
+    request_json,
+)
+from document_scanner import DocumentScanner
+
+
+PDF_CHUNK_SIZE = 45
+CHUNK_SUMMARY_PROMPT = (
+    "Kérlek, készíts egy rendkívül részletes, minden adatra, szabályra és fontos témára "
+    "kiterjedő összefoglalót ebből a dokumentumrészletből."
+)
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse the pipeline's source, state, and output paths."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("target_dir", type=Path, help="Directory containing documents to process.")
+    parser.add_argument("db_path", type=Path, help="SQLite database used to track processed files.")
+    parser.add_argument(
+        "--staging-dir",
+        type=Path,
+        default=Path("staging_output"),
+        help="Directory for generated RAG text files (default: staging_output).",
+    )
+    parser.add_argument(
+        "--prompt-file",
+        type=Path,
+        default=Path("extraction_prompt.md"),
+        help="Extraction prompt file (default: extraction_prompt.md).",
+    )
+    return parser.parse_args()
+
+
+def _require_text(data: dict[str, Any], key: str) -> str:
+    """Return a required string field from an extraction response."""
+    value = data.get(key)
+    if not isinstance(value, str):
+        raise ValueError(f"Extraction response field '{key}' must be a string.")
+    return value
+
+
+def _require_text_list(data: dict[str, Any], key: str) -> list[str]:
+    """Return a required list of strings from an extraction response."""
+    value = data.get(key)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"Extraction response field '{key}' must be a list of strings.")
+    return value
+
+
+def _yaml_string(value: str) -> str:
+    """Return a JSON-quoted string, which is also valid YAML."""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def build_rag_document(extraction: dict[str, Any], source_path: Path) -> str:
+    """Create RAG text with YAML metadata from a validated extraction response."""
+    title = _require_text(extraction, "title")
+    category = _require_text(extraction, "category")
+    tags = _require_text_list(extraction, "tags")
+    summary = _require_text(extraction, "summary")
+    questions = _require_text_list(extraction, "questions_answered")
+    last_modified = datetime.fromtimestamp(
+        source_path.stat().st_mtime, tz=timezone.utc
+    ).date().isoformat()
+
+    front_matter = [
+        "---",
+        f"doc_id: {_yaml_string(str(uuid.uuid4()))}",
+        f"title: {_yaml_string(title)}",
+        f"category: {_yaml_string(category)}",
+        f"tags: {json.dumps(tags, ensure_ascii=False)}",
+        f"source_path: {_yaml_string(str(source_path))}",
+        f"last_modified: {_yaml_string(last_modified)}",
+        "---",
+    ]
+    question_lines = [f"- {question}" for question in questions]
+
+    return "\n".join(
+        [
+            *front_matter,
+            "",
+            f"# {title}",
+            "",
+            "## Összefoglaló",
+            summary,
+            "",
+            "## Megválaszolt kérdések",
+            *question_lines,
+            "",
+        ]
+    )
+
+
+def _parse_extraction_json(answer: str) -> dict[str, Any]:
+    """Parse an extraction response into its required JSON object."""
+    try:
+        extraction = json.loads(answer)
+    except json.JSONDecodeError as error:
+        raise ValueError("Extraction response is not valid JSON.") from error
+
+    if not isinstance(extraction, dict):
+        raise ValueError("Extraction response must be a JSON object.")
+    return extraction
+
+
+def _request_pdf_answer(file_path: Path, prompt: str, headers: dict[str, str]) -> str:
+    """Send one PDF to the extraction endpoint and return its text answer."""
+    response = request_json(
+        f"{API_BASE_URL}/answer",
+        method="POST",
+        headers=headers,
+        payload={
+            "model": "gpt-4o",
+            "history": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": encode_pdf(file_path)}},
+                    ],
+                }
+            ],
+            "temperature": 0.2,
+            "useremail": os.environ["VSGPT_USER_EMAIL"],
+        },
+    )
+    answer = response.get("answer")
+    if not isinstance(answer, str):
+        raise RuntimeError("Extraction response did not contain a JSON string in 'answer'.")
+    return answer
+
+
+def _summarize_pdf_chunks(reader: PdfReader, headers: dict[str, str]) -> list[str]:
+    """Split a PDF into temporary chunks and collect detailed summaries."""
+    chunk_summaries: list[str] = []
+
+    for start_page in range(0, len(reader.pages), PDF_CHUNK_SIZE):
+        writer = PdfWriter()
+        for page in reader.pages[start_page : start_page + PDF_CHUNK_SIZE]:
+            writer.add_page(page)
+
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temporary_file:
+                temporary_path = Path(temporary_file.name)
+                writer.write(temporary_file)
+            chunk_summaries.append(_request_pdf_answer(temporary_path, CHUNK_SUMMARY_PROMPT, headers))
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+
+    return chunk_summaries
+
+
+def _reduce_chunk_summaries(
+    chunk_summaries: list[str], prompt: str, headers: dict[str, str]
+) -> dict[str, Any]:
+    """Create the final extraction JSON from the summaries of all PDF chunks."""
+    joined_summaries = "\n\n".join(chunk_summaries)
+    response = request_json(
+        f"{API_BASE_URL}/chat/completions",
+        method="POST",
+        headers=headers,
+        payload={
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nItt van a dokumentum tartalma:\n{joined_summaries}",
+                }
+            ],
+            "temperature": 0.2,
+            "user": os.environ["VSGPT_USER_EMAIL"],
+        },
+    )
+    try:
+        answer = response["choices"][0]["message"]["content"]
+    except (IndexError, KeyError, TypeError) as error:
+        raise RuntimeError("Reduce response did not contain choices[0].message.content.") from error
+
+    if not isinstance(answer, str):
+        raise RuntimeError("Reduce response content is not a JSON string.")
+    return _parse_extraction_json(answer)
+
+
+def _extract_text_pdf(text: str, prompt: str, headers: dict[str, str]) -> dict[str, Any]:
+    """Extract metadata from locally available PDF text via the text endpoint."""
+    response = request_json(
+        f"{API_BASE_URL}/chat/completions",
+        method="POST",
+        headers=headers,
+        payload={
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nItt van a dokumentum tartalma:\n{text}",
+                }
+            ],
+            "temperature": 0.2,
+            "user": os.environ["VSGPT_USER_EMAIL"],
+        },
+    )
+    try:
+        answer = response["choices"][0]["message"]["content"]
+    except (IndexError, KeyError, TypeError) as error:
+        raise RuntimeError(
+            "Text extraction response did not contain choices[0].message.content."
+        ) from error
+
+    if not isinstance(answer, str):
+        raise RuntimeError("Text extraction response content is not a JSON string.")
+    return _parse_extraction_json(answer)
+
+
+def extract_document(file_path: Path, prompt: str, headers: dict[str, str]) -> dict[str, Any]:
+    """Route digital PDFs to text extraction and scanned PDFs to the Vision flow."""
+    try:
+        reader = PdfReader(file_path)
+    except PdfReadError as error:
+        raise ValueError(f"Unable to read PDF {file_path}: {error}") from error
+
+    extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    if len(extracted_text) > 100:
+        return _extract_text_pdf(extracted_text, prompt, headers)
+
+    if len(reader.pages) <= PDF_CHUNK_SIZE:
+        return _parse_extraction_json(_request_pdf_answer(file_path, prompt, headers))
+
+    chunk_summaries = _summarize_pdf_chunks(reader, headers)
+    return _reduce_chunk_summaries(chunk_summaries, prompt, headers)
+
+
+def main() -> int:
+    """Process untracked documents into RAG staging output."""
+    args = parse_args()
+    load_env_file(Path(".env"))
+
+    client_id = os.getenv("VSGPT_CLIENT_ID")
+    client_secret = os.getenv("VSGPT_CLIENT_SECRET")
+    user_email = os.getenv("VSGPT_USER_EMAIL")
+    if not client_id or not client_secret or not user_email:
+        print(
+            "Missing VSGPT_CLIENT_ID, VSGPT_CLIENT_SECRET, or VSGPT_USER_EMAIL.",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        prompt = args.prompt_file.read_text(encoding="utf-8")
+        scanner = DocumentScanner(args.target_dir, args.db_path)
+        unprocessed_files = scanner.get_unprocessed_files()
+        access_token = get_access_token(client_id, client_secret)
+    except (OSError, RuntimeError, ValueError, sqlite3.Error) as error:
+        print(f"Pipeline initialization failed: {error}", file=sys.stderr)
+        return 1
+
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    try:
+        args.staging_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        print(f"Unable to create staging directory: {error}", file=sys.stderr)
+        return 1
+
+    for file_path_string in unprocessed_files:
+        file_path = Path(file_path_string)
+        try:
+            extraction = extract_document(file_path, prompt, headers)
+            rag_document = build_rag_document(extraction, file_path)
+            output_path = args.staging_dir / f"{file_path.stem}.txt"
+            output_path.write_text(rag_document, encoding="utf-8")
+            scanner.mark_as_processed(file_path)
+        except (OSError, RuntimeError, ValueError, json.JSONDecodeError, sqlite3.Error) as error:
+            print(f"Skipping {file_path}: {error}", file=sys.stderr)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
