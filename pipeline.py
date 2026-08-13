@@ -27,6 +27,13 @@ from document_scanner import DocumentScanner
 
 
 PDF_CHUNK_SIZE = 45
+DIGITAL_TEXT_THRESHOLD = 100
+EXTENSION_GROUPS: dict[str, set[str]] = {
+    "pdf": {".pdf"},
+    "word": {".docx", ".doc"},
+    "excel": {".xlsx", ".xls"},
+    "image": {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"},
+}
 CHUNK_SUMMARY_PROMPT = (
     "Kérlek, készíts egy rendkívül részletes, minden adatra, szabályra és fontos témára "
     "kiterjedő összefoglalót ebből a dokumentumrészletből."
@@ -50,7 +57,41 @@ def parse_args() -> argparse.Namespace:
         default=Path("extraction_prompt.md"),
         help="Extraction prompt file (default: extraction_prompt.md).",
     )
+    parser.add_argument(
+        "--file-type",
+        choices=["all", *EXTENSION_GROUPS],
+        default="pdf",
+        help="File type to process (default: pdf).",
+    )
+    parser.add_argument(
+        "--pdf-type",
+        choices=["all", "digital", "scanned"],
+        default="all",
+        help="PDF type to process (default: all).",
+    )
     return parser.parse_args()
+
+
+def is_file_type_matching(file_path: Path, file_type_filter: str) -> bool:
+    """Return whether a file belongs to the requested extension group."""
+    if file_type_filter == "all":
+        return True
+    if file_type_filter not in EXTENSION_GROUPS:
+        raise ValueError(f"Unsupported file type filter: {file_type_filter}")
+    return file_path.suffix.lower() in EXTENSION_GROUPS[file_type_filter]
+
+
+def is_pdf_type_matching(file_path: Path, pdf_type_filter: str) -> bool:
+    """Return whether a PDF has locally extractable text matching the requested type."""
+    if pdf_type_filter == "all":
+        return True
+    if pdf_type_filter not in {"digital", "scanned"}:
+        raise ValueError(f"Unsupported PDF type filter: {pdf_type_filter}")
+
+    reader = PdfReader(file_path)
+    extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    is_digital = len(extracted_text) > DIGITAL_TEXT_THRESHOLD
+    return is_digital if pdf_type_filter == "digital" else not is_digital
 
 
 def _require_text(data: dict[str, Any], key: str) -> str:
@@ -243,7 +284,7 @@ def extract_document(file_path: Path, prompt: str, headers: dict[str, str]) -> d
         raise ValueError(f"Unable to read PDF {file_path}: {error}") from error
 
     extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
-    if len(extracted_text) > 100:
+    if len(extracted_text) > DIGITAL_TEXT_THRESHOLD:
         return _extract_text_pdf(extracted_text, prompt, headers)
 
     if len(reader.pages) <= PDF_CHUNK_SIZE:
@@ -290,6 +331,21 @@ def main() -> int:
 
     for file_path_string in unprocessed_files:
         file_path = Path(file_path_string)
+        if not is_file_type_matching(file_path, args.file_type):
+            if file_path.suffix.lower() == ".pdf":
+                print(f"Skipping PDF {file_path}: it does not match --file-type {args.file_type}.")
+            continue
+
+        if file_path.suffix.lower() == ".pdf":
+            try:
+                matches_pdf_type = is_pdf_type_matching(file_path, args.pdf_type)
+            except (OSError, PdfReadError) as error:
+                print(f"Skipping PDF {file_path}: unable to determine PDF type: {error}", file=sys.stderr)
+                continue
+            if not matches_pdf_type:
+                print(f"Skipping PDF {file_path}: it does not match --pdf-type {args.pdf_type}.")
+                continue
+
         try:
             extraction = extract_document(file_path, prompt, headers)
             rag_document = build_rag_document(extraction, file_path)

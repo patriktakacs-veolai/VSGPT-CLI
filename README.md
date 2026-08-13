@@ -1,123 +1,108 @@
-# VeoliaSecureGPT CLI Kliens – Teljes Dokumentáció és Használati Útmutató
+# VeoliaSecureGPT kliens és RAG ETL pipeline
 
-Ez a dokumentum a **VeoliaSecureGPT** (OpenAI-kompatibilis mesterséges intelligencia API) parancssori Python kliensének leírását, beállítási lépéseit és használati útmutatóját tartalmazza.
+Ez a projekt három részből áll:
 
----
+| Fájl | Feladat |
+| --- | --- |
+| `connect_to_vsgpt.py` | Parancssori kliens a VeoliaSecureGPT API-hoz. |
+| `document_scanner.py` | Új vagy megváltozott dokumentumok azonosítása SHA-256 hash alapján. |
+| `pipeline.py` | PDF-ek feldolgozása, RAG-formátumú staging fájlok létrehozása és az állapot frissítése. |
+| `extraction_prompt.md` | A dokumentumkinyerő modellnek küldött utasítás és elvárt JSON-séma. |
 
-## 1. A kód leírása és működése
+## Előfeltételek
 
-A szkript egy könnyűsúlyú CLI eszköz, amely kizárólag a Python beépített könyvtárait használja (`urllib`, `json`, `argparse`, `base64`, `os`, `pathlib`). Ennek köszönhetően semmilyen harmadik féltől származó csomagot (pl. `requests`) nem kell telepíteni.
+- Python 3.10 vagy újabb.
+- VeoliaSecureGPT hozzáférés: kliensazonosító, kliens titok és felhasználói e-mail cím.
+- A RAG pipeline futtatásához a `pypdf` csomag.
 
-### Fő funkciók:
-
-- **Környezeti változók betöltése (`load_env_file`)**:
-  - Automatikusan beolvassa a szkript mellett lévő `.env` fájlt.
-  - Nem írja felül a már meglévő rendszerszintű környezeti változókat (`os.environ.setdefault`).
-- **OAuth2 Hitelesítés (`get_access_token`)**:
-  - A megadott `VSGPT_CLIENT_ID` és `VSGPT_CLIENT_SECRET` használatával Basic hitelesítési kérést küld a Veolia OAuth szerverére (`https://api.veolia.com/security/v2/oauth/token`).
-  - Visszakap egy ideiglenes `access_token`-t (Bearer token).
-- **API Kérések kezelése (`request_json`)**:
-  - Hálózati kéréseket indít a VeoliaSecureGPT proxy felé (`https://api.veolia.com/llm/veoliasecuregpt/v1`).
-  - Támogatja az elérhető modellek kilistázását (`/models`) és a prompt alapú válaszgenerálást (`/chat/completions`).
-- **PDF-csatolmányok**:
-  - A `--pdf` kapcsoló a dokumentumot base64-es `data:application/pdf` formátumban küldi a multimodális API-nak.
-- **Hibakezelés**:
-  - Egyértelmű hibaüzenetet ad vissza HTTP és hálózati (URL) hibák esetén.
-
----
-
-## 2. Előfeltételek és Beállítás
-
-### A) Szükséges hozzáférések
-A szkript futtatásához az alábbi adatokra van szükség:
-- `VSGPT_CLIENT_ID`: Az Ön API ügyfél azonosítója.
-- `VSGPT_CLIENT_SECRET`: Az Ön API titkos kulcsa.
-- `VSGPT_USER_EMAIL`: Az Ön munkahelyi e-mail címe (a proxy ehhez köti a lekérdezéseket).
-
-### B) `.env` fájl létrehozása
-Hozzon létre egy `.env` fájlt a szkripttel azonos mappában (`vsgpt_connect/.env`):
-
-```env
-VSGPT_CLIENT_ID=a_te_client_id_erteked
-VSGPT_CLIENT_SECRET=a_te_client_secret_erteked
-VSGPT_USER_EMAIL=felhasznalo@veolia.com
+```powershell
+python -m pip install pypdf
 ```
 
----
+Hozzon létre egy `.env` fájlt a projekt gyökerében:
 
-## 3. Használati Utasítások és Példák
+```env
+VSGPT_CLIENT_ID=az_on_client_id_erteke
+VSGPT_CLIENT_SECRET=az_on_client_secret_erteke
+VSGPT_USER_EMAIL=felhasznalo@pelda.hu
+```
 
-### 1. Elérhető modellek kilistázása
-Tekintse meg, hogy milyen modellek érhetők el a fiókjával:
+A `.env` fájl ne kerüljön verziókezelésbe. A program a már beállított rendszerkörnyezeti változókat nem írja felül.
 
-```bash
+## 1. VeoliaSecureGPT parancssori kliens
+
+A `connect_to_vsgpt.py` küld szöveges kérdéseket és PDF-eket a VeoliaSecureGPT OpenAI-kompatibilis API-jának. A hitelesítéshez OAuth hozzáférési tokent kér, ezért a `.env` fájl három változója szükséges.
+
+### Elérhető modellek
+
+```powershell
 python connect_to_vsgpt.py --list-models
 ```
 
-### 2. Kérdés feltevése (Prompt küldése)
-*(Fontos: Mindig adja meg a `--model` paramétert, ha az alapértelmezett `gpt-5` nem érhető el az Ön csomagjában!)*
+### Szöveges kérdés
 
-```bash
-python connect_to_vsgpt.py "Mi Magyarország fővárosa?" --model gpt-4o
+```powershell
+python connect_to_vsgpt.py "Foglalld össze röviden a megújuló energia előnyeit." --model gpt-4o-mini
 ```
 
-### 3. Kérdés feltevése egyéb beállításokkal
-Beállíthatja a válasz kreativitását a `--temperature` paranccsal (értéke: `0.0` – pontos/analitikus, `2.0` – kreatív):
+### Szöveges kérdés egyedi beállításokkal
 
-```bash
-python connect_to_vsgpt.py "Írj egy rövid összefoglalót a megújuló energiákról." --model gpt-4o-mini --temperature 0.3
+```powershell
+python connect_to_vsgpt.py "Mik a dokumentum fő kockázatai?" --model gpt-4o --temperature 0.2 --user-email felhasznalo@pelda.hu
 ```
 
-### 4. PDF elemzése
-Adjon meg egy PDF fájlt a `--pdf` kapcsolóval. A kérdés és a dokumentum ugyanabban az üzenetben jut el a modellhez:
+### PDF elemzése
 
-```bash
-python connect_to_vsgpt.py "Foglald össze ezt a dokumentumot magyarul." --pdf "C:\dokumentumok\jelentes.pdf" --model gpt-4o
+```powershell
+python connect_to_vsgpt.py "Foglald össze magyarul." --pdf "C:\dokumentumok\jelentes.pdf" --model gpt-4o
 ```
 
-PDF csatolásakor a kliens automatikusan a dokumentumfeldolgozást támogató `/answer` végpontot használja; PDF nélküli kérések továbbra is az OpenAI-kompatibilis `/chat/completions` végpontra mennek.
+A `--pdf` csak valódi PDF fájlt fogad el. PDF esetén a kliens az `/answer`, szöveges kérdésnél a `/chat/completions` végpontot használja.
 
----
+### A kinyerési prompt használata PDF-fel
 
-## 4. Gyakori Hibák és Megoldásuk
+A `--generate_md` kapcsoló a megadott szöveg helyett az `extraction_prompt.md` tartalmát küldi a PDF mellé:
 
-### ❌ `HTTP 400: This model is not accessible with the product VeoliaSecureGPT...`
-- **A hiba oka:** A szkript alapértelmezett modellje a `gpt-5`, amely a prémium VeoliaSecureGPT Flex előfizetést igényli. Ha a fiókja az alap VeoliaSecureGPT csomaggal rendelkezik, az API elutasítja a kérést.
-- **Megoldás:**
-  1. Használjon egy elérhető modellt a parancsban (pl. `--model gpt-4o` vagy `--model gpt-4o-mini`).
-  2. Vagy módosítsa a `connect_to_vsgpt.py` fájlban a `parse_args()` függvényt:
-     ```python
-     parser.add_argument("--model", default="gpt-4o", help="Model ID (default: gpt-4o).")
-     ```
+```powershell
+python connect_to_vsgpt.py --pdf "C:\dokumentumok\jelentes.pdf" --generate_md --model gpt-4o
+```
 
-### ❌ `Missing VSGPT_CLIENT_ID or VSGPT_CLIENT_SECRET`
-- **A hiba oka:** A szkript nem találja az API kulcsokat.
-- **Megoldás:** Ellenőrizze, hogy a `.env` fájl pontosan a szkript mellett található-e, és ki vannak-e töltve benne a megfelelő változók.
+### Kliens kapcsolói
 
----
+| Kapcsoló | Leírás | Alapérték |
+| --- | --- | --- |
+| `prompt` | Szöveges kérdés vagy utasítás. | Nincs |
+| `--model` | Használt modell azonosítója. | `gpt-4o-mini` |
+| `--user-email` | Végfelhasználó e-mail címe. | `VSGPT_USER_EMAIL` |
+| `--temperature` | Kreativitás, 0 és 2 között. | `0.2` |
+| `--pdf PATH` | PDF csatolmány. | Nincs |
+| `--generate_md` | PDF-hez az `extraction_prompt.md` utasítását használja. | Kikapcsolva |
+| `--list-models` | Kilistázza az elérhető modelleket. | Kikapcsolva |
 
-## 5. Parancssori Opciók Összefoglalása
+## 2. Dokumentum-szkenner
 
-| Kapcsoló / Paraméter | Típus | Leírás | Alapértelmezett érték |
-| :--- | :--- | :--- | :--- |
-| `prompt` | Pozícionális | A modellnek küldött kérdés/utasítás. | Kötelező (kivéve `--list-models`) |
-| `--model` | Sztring | A használni kívánt modell azonosítója (pl. `gpt-4o`, `gpt-4o-mini`, `gemini-2.5-flash`). | `gpt-5` |
-| `--user-email` | Sztring | A felhasználó e-mail címe az azonosításhoz. | `VSGPT_USER_EMAIL` környezeti változó |
-| `--temperature` | Float (0.0 - 2.0) | Mintavételezési hőmérséklet (kreativitási tényező). | `0.2` |
-| `--pdf` | Fájlútvonal | A kérdéshez csatolandó PDF dokumentum. | Nincs |
-| `--list-models` | Flag | Kilistázza a fiókkal elérhető modellek azonosítóit. | `False` |
-| `--scan-directory PATH` | Fájlútvonal | Kilistázza a RAG ETL számára új fájlokat. | Nincs |
-| `--scanner-db PATH` | Fájlútvonal | A scanner SQLite állapotadatbázisának útvonala. | `scanner_state.sqlite` |
+A `DocumentScanner` rekurzívan bejár egy megadott mappát, és minden fájl SHA-256 hash-ét 64 KB-os blokkokban számítja ki. Az SQLite adatbázis `processed_files` táblája tárolja a már sikeresen feldolgozott tartalmak hash-ét.
 
----
+| Mező | Jelentés |
+| --- | --- |
+| `id` | Elsődleges kulcs. |
+| `file_path` | A feldolgozott fájl abszolút útvonala. |
+| `file_hash` | A fájl SHA-256 hash-e. |
+| `processed_at` | A sikeres feldolgozás UTC időpontja. |
 
-## 6. Dokumentum-szkenner RAG ETL folyamathoz
+A szkenner tartalom alapján azonosít: két azonos tartalmú, de eltérő nevű fájl közül csak az első számít új tartalomnak. A `get_unprocessed_files()` nem módosítja az adatbázist. A `mark_as_processed()` csak a sikeres feldolgozás után rögzíti a hash-t.
 
-A `document_scanner.py` a RAG adat-előkészítő folyamat első, **Scanner** lépését valósítja meg. A `DocumentScanner` rekurzívan bejárja a megadott könyvtárat, minden fájlhoz 64 KB-os blokkokban SHA-256 hash-t számol, majd az SQLite állapotadatbázis alapján kiválasztja az új tartalmú fájlokat.
+### Scanner parancssorból
 
-Az állapotadatbázis a megadott `db_path` helyen jön létre. Tartalmazza a `processed_files` táblát az alábbi mezőkkel: `id`, `file_path`, `file_hash` és `processed_at`.
+Ez a művelethez nem szükséges API-hitelesítés:
 
-### Használat
+```powershell
+python connect_to_vsgpt.py --scan-directory "C:\dokumentumok" --scanner-db "C:\rag\scanner_state.sqlite"
+```
+
+Az új fájlok abszolút útvonalai külön sorokban jelennek meg. A `--scanner-db` elhagyásakor az adatbázis neve `scanner_state.sqlite` az aktuális mappában.
+
+### Scanner Pythonból
 
 ```python
 from pathlib import Path
@@ -125,41 +110,126 @@ from pathlib import Path
 from document_scanner import DocumentScanner
 
 scanner = DocumentScanner(
-    target_dir=Path("test_documents"),
-    db_path=Path("scanner_state.sqlite"),
+    target_dir=Path(r"C:\dokumentumok"),
+    db_path=Path(r"C:\rag\scanner_state.sqlite"),
 )
 
-new_files = scanner.get_unprocessed_files()
-for file_path in new_files:
+for file_path in scanner.get_unprocessed_files():
     print(file_path)
 ```
 
-A `get_unprocessed_files()` abszolút fájlútvonalak listáját adja vissza. A metódus kizárólag olvassa az állapotadatbázist; a hash-ek rögzítését csak egy későbbi, sikeres feldolgozást végző ETL lépésnek kell elvégeznie.
+## 3. RAG ETL pipeline
 
-### Parancssori használat
+A `pipeline.py` a teljes dokumentumfeldolgozást vezérli:
 
-A scanner a meglévő kliens parancsán keresztül is futtatható; ehhez nincs szükség API-hitelesítő adatokra:
+1. A scanner megkeresi az adatbázisban még nem szereplő tartalmakat.
+2. A pipeline kiválasztja a parancssori szűrőknek megfelelő fájlokat.
+3. PDF esetén helyi szövegkinyeréssel eldönti, hogy digitális vagy szkennelt dokumentumról van-e szó.
+4. Meghívja a megfelelő Veolia API-végpontot.
+5. Az API JSON-válaszából RAG-formátumú `.txt` fájlt készít.
+6. Sikeres mentés után a fájl hash-e bekerül az SQLite állapotadatbázisba.
 
-```bash
-python connect_to_vsgpt.py --scan-directory "C:\dokumentumok" --scanner-db "C:\rag\scanner_state.sqlite"
-```
+### Alap futtatás
 
-A `--scanner-db` elhagyásakor a program az aktuális mappában lévő `scanner_state.sqlite` adatbázist használja. A parancs minden új fájl abszolút útvonalát külön sorban írja ki.
-
----
-
-## 7. RAG ETL pipeline
-
-A `pipeline.py` összeköti a szkennelést, a Veolia API-n végzett PDF-kinyerést és a RAG staging kimenet előállítását. A pipeline az `extraction_prompt.md` által meghatározott JSON-választ YAML front matterrel és strukturált törzsszöveggel egészíti ki, majd `.txt` fájlként menti a `staging_output` mappába.
-
-```bash
+```powershell
 python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite"
 ```
 
-Egyedi kimeneti és prompt-mappa is megadható:
+Az alapértelmezett kimeneti mappa `staging_output`, az alapértelmezett kinyerési utasítás pedig `extraction_prompt.md`.
 
-```bash
-python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" --staging-dir "C:\rag\staging_output" --prompt-file "C:\rag\extraction_prompt.md"
+### Egyedi kimenet és prompt
+
+```powershell
+python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" `
+  --staging-dir "C:\rag\staging_output" `
+  --prompt-file "C:\rag\extraction_prompt.md"
 ```
 
-A pipeline a jelenlegi API-csatolóval PDF fájlokat dolgoz fel. Sikeres API-hívás, JSON-feldolgozás és staging mentés után a `mark_as_processed()` rögzíti a dokumentum hash-ét és a feldolgozás UTC időpontját. Sikertelen fájl esetén hibaüzenetet ír, de nem jelöli azt feldolgozottnak, ezért a következő futás újra megpróbálhatja.
+### Fájltípus- és PDF-típus-szűrés
+
+```powershell
+python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" --file-type pdf --pdf-type digital
+```
+
+| Kapcsoló | Értékek | Alapérték | Jelentés |
+| --- | --- | --- | --- |
+| `--file-type` | `all`, `pdf`, `word`, `excel`, `image` | `pdf` | Kiterjesztés szerinti szűrés. |
+| `--pdf-type` | `all`, `digital`, `scanned` | `all` | Csak PDF-eknél használt tartalom szerinti szűrés. |
+
+A fájltípus-csoportok:
+
+| Csoport | Kiterjesztések |
+| --- | --- |
+| `pdf` | `.pdf` |
+| `word` | `.docx`, `.doc` |
+| `excel` | `.xlsx`, `.xls` |
+| `image` | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tiff` |
+
+A `digital` PDF helyben kinyert szövege 100 karakternél hosszabb. A `scanned` PDF esetén ez a szöveg legfeljebb 100 karakter. A szűrőnek nem megfelelő PDF-ekről a pipeline rövid üzenetet ír, és nem jelöli őket feldolgozottnak.
+
+> **Jelenlegi korlát:** a pipeline dokumentumkinyerési lépése jelenleg PDF-eket támogat. A `word`, `excel`, `image` és `all` szűrők kiválaszthatnak más fájlokat is, de ezekhez még nincs feldolgozó implementálva, ezért nem kerülnek sikeresen feldolgozott állapotba. Éles RAG feldolgozáshoz használja az alapértelmezett `--file-type pdf` beállítást.
+
+### Hibrid PDF útválasztás
+
+| PDF típusa | Feltétel | Feldolgozás |
+| --- | --- | --- |
+| Digitális PDF | A kinyert szöveg több mint 100 karakter. | A teljes helyi szöveg a `/chat/completions` végpontra megy `gpt-4o-mini` modellel. |
+| Rövid szkennelt PDF | Legfeljebb 45 oldal és kevés vagy nincs szöveg. | A teljes PDF a Vision-alapú `/answer` végpontra megy `gpt-4o` modellel. |
+| Hosszú szkennelt PDF | Több mint 45 oldal és kevés vagy nincs szöveg. | A PDF 45 oldalas részekre bomlik, minden rész külön kivonatot kap, majd a kivonatokból a `/chat/completions` végpont `gpt-4o` modellel állítja elő a végső JSON-t. |
+
+A hosszú, szkennelt PDF-ek részfájljai csak ideiglenesen léteznek. A 45 oldalas határ az API képlimitje miatti biztonsági tartalék.
+
+## 4. Staging kimenet
+
+A pipeline minden sikeresen feldolgozott dokumentumhoz létrehoz egy `.txt` fájlt a staging mappában. A fájl neve az eredeti név kiterjesztés nélküli része, például `jelentes.pdf` esetén `jelentes.txt`.
+
+```text
+---
+doc_id: "egyedi-uuid"
+title: "A dokumentum címe"
+category: "A dokumentum kategóriája"
+tags: ["címke1", "címke2", "címke3"]
+source_path: "C:\dokumentumok\jelentes.pdf"
+last_modified: "2026-08-12"
+---
+
+# A dokumentum címe
+
+## Összefoglaló
+...
+
+## Megválaszolt kérdések
+- ...
+```
+
+| Mező | Jelentés |
+| --- | --- |
+| `doc_id` | Új UUID minden elkészült RAG dokumentumhoz. |
+| `title` | Az API által kinyert cím. |
+| `category` | Az API által meghatározott kategória. |
+| `tags` | Az API által kinyert címkék listája. |
+| `source_path` | Az eredeti fájl abszolút útvonala. |
+| `last_modified` | Az eredeti fájl utolsó módosítási dátuma UTC szerint. |
+
+Az `extraction_prompt.md` szerint az API-nak `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt tartalmazó JSON-objektumot kell visszaadnia.
+
+> **Figyelem:** azonos nevű, eltérő almappákban lévő dokumentumok ugyanarra a staging fájlnévre kerülhetnek, ezért az utóbbi felülírhatja az előzőt.
+
+## 5. Hibakezelés és újrapróbálás
+
+- API-hiba, sérült PDF, érvénytelen JSON vagy mentési hiba esetén az érintett fájl kimarad.
+- A kimaradt fájl nem kerül a `processed_files` táblába, ezért a következő futás ismét megpróbálja feldolgozni.
+- A pipeline csak a staging fájl sikeres mentése után hívja meg a `mark_as_processed()` metódust.
+- A PDF JSON-válaszának meg kell felelnie az `extraction_prompt.md` sémájának.
+
+Ha egy dokumentumot szándékosan újra kell feldolgozni, annak hash-ét el kell távolítani a választott SQLite adatbázis `processed_files` táblájából. Az adatbázis teljes törlése minden dokumentumot újnak tekint a következő futásban.
+
+## 6. Gyakori problémák
+
+| Probléma | Teendő |
+| --- | --- |
+| `Missing VSGPT_CLIENT_ID...` | Ellenőrizze a `.env` fájlt vagy a környezeti változókat. |
+| `Attachment must be a .pdf file` | A közvetlen PDF-feldolgozás csak `.pdf` kiterjesztést és érvényes PDF-fejlécet fogad el. |
+| `Unable to read PDF` | Ellenőrizze, hogy a fájl nem sérült, jelszóval védett vagy éppen használatban van. |
+| `Extraction response is not valid JSON` | Az API válasza nem felelt meg a kinyerési prompt előírt JSON-formátumának; a fájl a következő futáskor újrapróbálható. |
+| Nem jelenik meg új fájl | A tartalom hash-e már szerepel az állapotadatbázisban, vagy a fájl nem felel meg az aktív szűrőknek. |
