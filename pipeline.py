@@ -27,7 +27,7 @@ from document_scanner import DocumentScanner
 
 
 PDF_CHUNK_SIZE = 45
-DIGITAL_TEXT_THRESHOLD = 100
+DIGITAL_TEXT_THRESHOLD = 1000
 EXTENSION_GROUPS: dict[str, set[str]] = {
     "pdf": {".pdf"},
     "word": {".docx", ".doc"},
@@ -349,7 +349,12 @@ def main() -> int:
         try:
             extraction = extract_document(file_path, prompt, headers)
             rag_document = build_rag_document(extraction, file_path)
-            output_path = args.staging_dir / f"{file_path.stem}.txt"
+            drive, tail = os.path.splitdrive(str(file_path.resolve()))
+            drive_clean = drive.replace(":", "").strip("\\/").replace("\\", "/")
+            tail_clean = tail.strip("\\/")
+            clean_path = Path(drive_clean) / Path(tail_clean)
+            output_path = args.staging_dir / clean_path.with_suffix(".txt")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(rag_document, encoding="utf-8")
             scanner.mark_as_processed(file_path)
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError, sqlite3.Error) as error:

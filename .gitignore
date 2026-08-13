@@ -6,4 +6,5 @@ __pycache__/
 
 # Generated database and staging output
 scanner_state.sqlite
+hibas_scanner_state.sqlite
 staging_output/
