@@ -7,7 +7,6 @@ Ez a projekt három részből áll:
 | `connect_to_vsgpt.py` | Parancssori kliens a VeoliaSecureGPT API-hoz. |
 | `document_scanner.py` | Új vagy megváltozott dokumentumok azonosítása SHA-256 hash alapján. |
 | `pipeline.py` | PDF-ek feldolgozása, RAG-formátumú staging fájlok létrehozása és az állapot frissítése. |
-| `extraction_prompt.md` | A dokumentumkinyerő modellnek küldött utasítás és elvárt JSON-séma. |
 
 ## Előfeltételek
 
@@ -16,7 +15,7 @@ Ez a projekt három részből áll:
 - A RAG pipeline futtatásához a `pypdf` csomag.
 
 ```powershell
-python -m pip install pypdf
+python -m pip install pypdf pydantic
 ```
 
 Hozzon létre egy `.env` fájlt a projekt gyökerében:
@@ -59,14 +58,6 @@ python connect_to_vsgpt.py "Foglald össze magyarul." --pdf "C:\dokumentumok\jel
 
 A `--pdf` csak valódi PDF fájlt fogad el. PDF esetén a kliens az `/answer`, szöveges kérdésnél a `/chat/completions` végpontot használja.
 
-### A kinyerési prompt használata PDF-fel
-
-A `--generate_md` kapcsoló a megadott szöveg helyett az `extraction_prompt.md` tartalmát küldi a PDF mellé:
-
-```powershell
-python connect_to_vsgpt.py --pdf "C:\dokumentumok\jelentes.pdf" --generate_md --model gpt-4o
-```
-
 ### Kliens kapcsolói
 
 | Kapcsoló | Leírás | Alapérték |
@@ -76,7 +67,6 @@ python connect_to_vsgpt.py --pdf "C:\dokumentumok\jelentes.pdf" --generate_md --
 | `--user-email` | Végfelhasználó e-mail címe. | `VSGPT_USER_EMAIL` |
 | `--temperature` | Kreativitás, 0 és 2 között. | `0.2` |
 | `--pdf PATH` | PDF csatolmány. | Nincs |
-| `--generate_md` | PDF-hez az `extraction_prompt.md` utasítását használja. | Kikapcsolva |
 | `--list-models` | Kilistázza az elérhető modelleket. | Kikapcsolva |
 
 ## 2. Dokumentum-szkenner
@@ -129,20 +119,21 @@ A `pipeline.py` a teljes dokumentumfeldolgozást vezérli:
 5. Az API JSON-válaszából RAG-formátumú `.txt` fájlt készít.
 6. Sikeres mentés után a fájl hash-e bekerül az SQLite állapotadatbázisba.
 
+A végső kinyerési válaszokat a `DocumentExtraction` Pydantic modell ellenőrzi. A modell az OpenAI-kompatibilis `response_format` JSON-sémáját küldi az API-nak, ezért a válasznak `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt kell tartalmaznia.
+
 ### Alap futtatás
 
 ```powershell
 python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite"
 ```
 
-Az alapértelmezett kimeneti mappa `staging_output`, az alapértelmezett kinyerési utasítás pedig `extraction_prompt.md`.
+Az alapértelmezett kimeneti mappa `staging_output`. A pipeline a `pipeline.py` fájlban definiált `BASE_EXTRACTION_PROMPT` utasítást használja.
 
-### Egyedi kimenet és prompt
+### Egyedi kimenet
 
 ```powershell
 python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" `
-  --staging-dir "C:\rag\staging_output" `
-  --prompt-file "C:\rag\extraction_prompt.md"
+  --staging-dir "C:\rag\staging_output"
 ```
 
 ### Fájltípus- és PDF-típus-szűrés
@@ -211,16 +202,16 @@ last_modified: "2026-08-12"
 | `source_path` | Az eredeti fájl abszolút útvonala. |
 | `last_modified` | Az eredeti fájl utolsó módosítási dátuma UTC szerint. |
 
-Az `extraction_prompt.md` szerint az API-nak `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt tartalmazó JSON-objektumot kell visszaadnia.
+Az API-válasznak a `DocumentExtraction` Pydantic modell szerint `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt kell tartalmaznia.
 
-> **Figyelem:** azonos nevű, eltérő almappákban lévő dokumentumok ugyanarra a staging fájlnévre kerülhetnek, ezért az utóbbi felülírhatja az előzőt.
+Az abszolút forrásútvonal a staging mappán belül is tükröződik, ezért az azonos nevű, eltérő helyen lévő dokumentumok nem írják felül egymást.
 
 ## 5. Hibakezelés és újrapróbálás
 
 - API-hiba, sérült PDF, érvénytelen JSON vagy mentési hiba esetén az érintett fájl kimarad.
 - A kimaradt fájl nem kerül a `processed_files` táblába, ezért a következő futás ismét megpróbálja feldolgozni.
 - A pipeline csak a staging fájl sikeres mentése után hívja meg a `mark_as_processed()` metódust.
-- A PDF JSON-válaszának meg kell felelnie az `extraction_prompt.md` sémájának.
+- A PDF JSON-válaszának meg kell felelnie a `DocumentExtraction` Pydantic sémájának.
 
 Ha egy dokumentumot szándékosan újra kell feldolgozni, annak hash-ét el kell távolítani a választott SQLite adatbázis `processed_files` táblájából. Az adatbázis teljes törlése minden dokumentumot újnak tekint a következő futásban.
 
@@ -231,5 +222,5 @@ Ha egy dokumentumot szándékosan újra kell feldolgozni, annak hash-ét el kell
 | `Missing VSGPT_CLIENT_ID...` | Ellenőrizze a `.env` fájlt vagy a környezeti változókat. |
 | `Attachment must be a .pdf file` | A közvetlen PDF-feldolgozás csak `.pdf` kiterjesztést és érvényes PDF-fejlécet fogad el. |
 | `Unable to read PDF` | Ellenőrizze, hogy a fájl nem sérült, jelszóval védett vagy éppen használatban van. |
-| `Extraction response is not valid JSON` | Az API válasza nem felelt meg a kinyerési prompt előírt JSON-formátumának; a fájl a következő futáskor újrapróbálható. |
+| Pydantic validációs hiba | Az API válasza nem felelt meg a `DocumentExtraction` sémának; a fájl a következő futáskor újrapróbálható. |
 | Nem jelenik meg új fájl | A tartalom hash-e már szerepel az állapotadatbázisban, vagy a fájl nem felel meg az aktív szűrőknek. |

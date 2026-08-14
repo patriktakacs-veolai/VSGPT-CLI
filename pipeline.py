@@ -15,6 +15,7 @@ from typing import Any
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
+from pydantic import BaseModel, Field
 
 from connect_to_vsgpt import (
     API_BASE_URL,
@@ -34,10 +35,42 @@ EXTENSION_GROUPS: dict[str, set[str]] = {
     "excel": {".xlsx", ".xls"},
     "image": {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"},
 }
+BASE_EXTRACTION_PROMPT = (
+    "Te egy professzionális dokumentum-elemző rendszer vagy. "
+    "A feladatod a csatolt dokumentum elolvasása, és az abban található "
+    "legfontosabb információk strukturált kinyerése a megadott séma alapján."
+)
 CHUNK_SUMMARY_PROMPT = (
     "Kérlek, készíts egy rendkívül részletes, minden adatra, szabályra és fontos témára "
     "kiterjedő összefoglalót ebből a dokumentumrészletből."
 )
+
+
+class DocumentExtraction(BaseModel):
+    """Structured document metadata returned by the extraction model."""
+
+    title: str = Field(description="A dokumentum eredeti címe.")
+    category: str = Field(description="A dokumentum témaköre / kategóriája (pl. IT-Biztonság, HR, Jogi, Pénzügy).")
+    tags: list[str] = Field(
+        min_length=7,
+        max_length=7,
+        description="Pontosan 7 darab releváns kulcsszó vagy címke."
+    )
+    summary: str = Field(description="Egy alapos, részletes leírás a dokumentum lényegi tartalmáról.")
+    questions_answered: list[str] = Field(
+        min_length=3,
+        max_length=5,
+        description="3-5 darab legfontosabb kérdés, amire a szöveg megoldást kínál."
+    )
+
+
+DOCUMENT_EXTRACTION_RESPONSE_FORMAT: dict[str, Any] = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "document_extraction",
+        "schema": DocumentExtraction.model_json_schema(),
+    },
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,12 +83,6 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("staging_output"),
         help="Directory for generated RAG text files (default: staging_output).",
-    )
-    parser.add_argument(
-        "--prompt-file",
-        type=Path,
-        default=Path("extraction_prompt.md"),
-        help="Extraction prompt file (default: extraction_prompt.md).",
     )
     parser.add_argument(
         "--file-type",
@@ -94,34 +121,13 @@ def is_pdf_type_matching(file_path: Path, pdf_type_filter: str) -> bool:
     return is_digital if pdf_type_filter == "digital" else not is_digital
 
 
-def _require_text(data: dict[str, Any], key: str) -> str:
-    """Return a required string field from an extraction response."""
-    value = data.get(key)
-    if not isinstance(value, str):
-        raise ValueError(f"Extraction response field '{key}' must be a string.")
-    return value
-
-
-def _require_text_list(data: dict[str, Any], key: str) -> list[str]:
-    """Return a required list of strings from an extraction response."""
-    value = data.get(key)
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        raise ValueError(f"Extraction response field '{key}' must be a list of strings.")
-    return value
-
-
 def _yaml_string(value: str) -> str:
     """Return a JSON-quoted string, which is also valid YAML."""
     return json.dumps(value, ensure_ascii=False)
 
 
-def build_rag_document(extraction: dict[str, Any], source_path: Path) -> str:
+def build_rag_document(extraction: DocumentExtraction, source_path: Path) -> str:
     """Create RAG text with YAML metadata from a validated extraction response."""
-    title = _require_text(extraction, "title")
-    category = _require_text(extraction, "category")
-    tags = _require_text_list(extraction, "tags")
-    summary = _require_text(extraction, "summary")
-    questions = _require_text_list(extraction, "questions_answered")
     last_modified = datetime.fromtimestamp(
         source_path.stat().st_mtime, tz=timezone.utc
     ).date().isoformat()
@@ -129,23 +135,23 @@ def build_rag_document(extraction: dict[str, Any], source_path: Path) -> str:
     front_matter = [
         "---",
         f"doc_id: {_yaml_string(str(uuid.uuid4()))}",
-        f"title: {_yaml_string(title)}",
-        f"category: {_yaml_string(category)}",
-        f"tags: {json.dumps(tags, ensure_ascii=False)}",
+        f"title: {_yaml_string(extraction.title)}",
+        f"category: {_yaml_string(extraction.category)}",
+        f"tags: {json.dumps(extraction.tags, ensure_ascii=False)}",
         f"source_path: {_yaml_string(str(source_path))}",
         f"last_modified: {_yaml_string(last_modified)}",
         "---",
     ]
-    question_lines = [f"- {question}" for question in questions]
+    question_lines = [f"- {question}" for question in extraction.questions_answered]
 
     return "\n".join(
         [
             *front_matter,
             "",
-            f"# {title}",
+            f"# {extraction.title}",
             "",
             "## Összefoglaló",
-            summary,
+            extraction.summary,
             "",
             "## Megválaszolt kérdések",
             *question_lines,
@@ -154,38 +160,37 @@ def build_rag_document(extraction: dict[str, Any], source_path: Path) -> str:
     )
 
 
-def _parse_extraction_json(answer: str) -> dict[str, Any]:
-    """Parse an extraction response into its required JSON object."""
-    try:
-        extraction = json.loads(answer)
-    except json.JSONDecodeError as error:
-        raise ValueError("Extraction response is not valid JSON.") from error
-
-    if not isinstance(extraction, dict):
-        raise ValueError("Extraction response must be a JSON object.")
-    return extraction
+def _validate_extraction(answer: str) -> DocumentExtraction:
+    """Validate a structured API response with the extraction model."""
+    return DocumentExtraction.model_validate_json(answer)
 
 
-def _request_pdf_answer(file_path: Path, prompt: str, headers: dict[str, str]) -> str:
+def _request_pdf_answer(
+    file_path: Path, prompt: str, headers: dict[str, str], *, structured_output: bool = False
+) -> str:
     """Send one PDF to the extraction endpoint and return its text answer."""
+    payload: dict[str, Any] = {
+        "model": "gpt-4o",
+        "history": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": encode_pdf(file_path)}},
+                ],
+            }
+        ],
+        "temperature": 0.2,
+        "useremail": os.environ["VSGPT_USER_EMAIL"],
+    }
+    if structured_output:
+        payload["response_format"] = DOCUMENT_EXTRACTION_RESPONSE_FORMAT
+
     response = request_json(
         f"{API_BASE_URL}/answer",
         method="POST",
         headers=headers,
-        payload={
-            "model": "gpt-4o",
-            "history": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": encode_pdf(file_path)}},
-                    ],
-                }
-            ],
-            "temperature": 0.2,
-            "useremail": os.environ["VSGPT_USER_EMAIL"],
-        },
+        payload=payload,
     )
     answer = response.get("answer")
     if not isinstance(answer, str):
@@ -217,7 +222,7 @@ def _summarize_pdf_chunks(reader: PdfReader, headers: dict[str, str]) -> list[st
 
 def _reduce_chunk_summaries(
     chunk_summaries: list[str], prompt: str, headers: dict[str, str]
-) -> dict[str, Any]:
+) -> DocumentExtraction:
     """Create the final extraction JSON from the summaries of all PDF chunks."""
     joined_summaries = "\n\n".join(chunk_summaries)
     response = request_json(
@@ -234,6 +239,7 @@ def _reduce_chunk_summaries(
             ],
             "temperature": 0.2,
             "user": os.environ["VSGPT_USER_EMAIL"],
+            "response_format": DOCUMENT_EXTRACTION_RESPONSE_FORMAT,
         },
     )
     try:
@@ -243,10 +249,10 @@ def _reduce_chunk_summaries(
 
     if not isinstance(answer, str):
         raise RuntimeError("Reduce response content is not a JSON string.")
-    return _parse_extraction_json(answer)
+    return _validate_extraction(answer)
 
 
-def _extract_text_pdf(text: str, prompt: str, headers: dict[str, str]) -> dict[str, Any]:
+def _extract_text_pdf(text: str, prompt: str, headers: dict[str, str]) -> DocumentExtraction:
     """Extract metadata from locally available PDF text via the text endpoint."""
     response = request_json(
         f"{API_BASE_URL}/chat/completions",
@@ -262,6 +268,7 @@ def _extract_text_pdf(text: str, prompt: str, headers: dict[str, str]) -> dict[s
             ],
             "temperature": 0.2,
             "user": os.environ["VSGPT_USER_EMAIL"],
+            "response_format": DOCUMENT_EXTRACTION_RESPONSE_FORMAT,
         },
     )
     try:
@@ -273,10 +280,10 @@ def _extract_text_pdf(text: str, prompt: str, headers: dict[str, str]) -> dict[s
 
     if not isinstance(answer, str):
         raise RuntimeError("Text extraction response content is not a JSON string.")
-    return _parse_extraction_json(answer)
+    return _validate_extraction(answer)
 
 
-def extract_document(file_path: Path, prompt: str, headers: dict[str, str]) -> dict[str, Any]:
+def extract_document(file_path: Path, prompt: str, headers: dict[str, str]) -> DocumentExtraction:
     """Route digital PDFs to text extraction and scanned PDFs to the Vision flow."""
     try:
         reader = PdfReader(file_path)
@@ -288,7 +295,9 @@ def extract_document(file_path: Path, prompt: str, headers: dict[str, str]) -> d
         return _extract_text_pdf(extracted_text, prompt, headers)
 
     if len(reader.pages) <= PDF_CHUNK_SIZE:
-        return _parse_extraction_json(_request_pdf_answer(file_path, prompt, headers))
+        return _validate_extraction(
+            _request_pdf_answer(file_path, prompt, headers, structured_output=True)
+        )
 
     chunk_summaries = _summarize_pdf_chunks(reader, headers)
     return _reduce_chunk_summaries(chunk_summaries, prompt, headers)
@@ -310,7 +319,7 @@ def main() -> int:
         return 2
 
     try:
-        prompt = args.prompt_file.read_text(encoding="utf-8")
+        prompt = BASE_EXTRACTION_PROMPT
         scanner = DocumentScanner(args.target_dir, args.db_path)
         unprocessed_files = scanner.get_unprocessed_files()
         access_token = get_access_token(client_id, client_secret)
@@ -357,7 +366,7 @@ def main() -> int:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(rag_document, encoding="utf-8")
             scanner.mark_as_processed(file_path)
-        except (OSError, RuntimeError, ValueError, json.JSONDecodeError, sqlite3.Error) as error:
+        except (OSError, RuntimeError, ValueError, sqlite3.Error) as error:
             print(f"Skipping {file_path}: {error}", file=sys.stderr)
 
     return 0
