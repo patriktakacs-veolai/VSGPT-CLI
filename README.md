@@ -7,15 +7,17 @@ Ez a projekt három részből áll:
 | `connect_to_vsgpt.py` | Parancssori kliens a VeoliaSecureGPT API-hoz. |
 | `document_scanner.py` | Új vagy megváltozott dokumentumok azonosítása SHA-256 hash alapján. |
 | `pipeline.py` | PDF-ek feldolgozása, RAG-formátumú staging fájlok létrehozása és az állapot frissítése. |
+| `pipeline_config.yaml` | A pipeline futtatási útvonalai, modellje, promptja és dinamikus sémája. |
+| `test_schema.py` | A `pipeline_config.yaml` által betöltött alapértelmezett Pydantic séma. |
 
 ## Előfeltételek
 
 - Python 3.10 vagy újabb.
 - VeoliaSecureGPT hozzáférés: kliensazonosító, kliens titok és felhasználói e-mail cím.
-- A RAG pipeline futtatásához a `pypdf` csomag.
+- A RAG pipeline futtatásához a `pypdf`, `pydantic` és `PyYAML` csomag.
 
 ```powershell
-python -m pip install pypdf pydantic
+python -m pip install pypdf pydantic pyyaml
 ```
 
 Hozzon létre egy `.env` fájlt a projekt gyökerében:
@@ -119,27 +121,45 @@ A `pipeline.py` a teljes dokumentumfeldolgozást vezérli:
 5. Az API JSON-válaszából RAG-formátumú `.txt` fájlt készít.
 6. Sikeres mentés után a fájl hash-e bekerül az SQLite állapotadatbázisba.
 
-A végső kinyerési válaszokat a `DocumentExtraction` Pydantic modell ellenőrzi. A modell az OpenAI-kompatibilis `response_format` JSON-sémáját küldi az API-nak, ezért a válasznak `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt kell tartalmaznia.
+A végső kinyerési válaszokat a YAML konfigurációban megadott Pydantic modell ellenőrzi. A pipeline a dinamikusan betöltött modell `model_json_schema()` sémáját a `/chat/completions` hívásoknál küldi az API-nak az OpenAI-kompatibilis `response_format` paraméterben.
 
 ### Alap futtatás
 
 ```powershell
-python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite"
+python pipeline.py --config "pipeline_config.yaml"
 ```
 
-Az alapértelmezett kimeneti mappa `staging_output`. A pipeline a `pipeline.py` fájlban definiált `BASE_EXTRACTION_PROMPT` utasítást használja.
+A konfigurációban kötelező a `schema_module`, `schema_class` és `prompt`. A `target_dir`, `db_path`, `staging_dir` és `model` is megadható benne.
 
-### Egyedi kimenet
+```yaml
+target_dir: '\\szerver\megosztas\dokumentumok'
+db_path: 'C:\rag\scanner_state.sqlite'
+staging_dir: 'C:\rag\staging_output'
+schema_module: 'test_schema'
+schema_class: 'DocumentExtraction'
+model: 'gpt-4o'
+prompt: >
+  A dokumentumot a megadott séma szerint dolgozd fel.
+```
+
+### A prompt és a séma kapcsolata
+
+A YAML `prompt` mezőjének is egyértelműen le kell írnia az elvárt JSON mezőket és azok szerkezetét. Ez nem ismétlés: a szkennelt PDF-ek a Vision-alapú `/answer` végpontra kerülnek, amelynél a `response_format` paraméter nem használható, mert üres választ okozhat.
+
+Ezért a `/answer` végpont kizárólag a szöveges promptból tudja, milyen JSON-t kell visszaadnia. A promptot mindig tartsa szinkronban a `schema_module` / `schema_class` által betöltött Pydantic modellel. A digitális PDF-ek és a hosszú, szkennelt PDF-ek Reduce lépése a `/chat/completions` végpontot használja, ahol a modell a prompt mellett a szigorú Pydantic sémát is megkapja.
+
+### Parancssori útvonal-felülírás
 
 ```powershell
 python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" `
+  --config "pipeline_config.yaml" `
   --staging-dir "C:\rag\staging_output"
 ```
 
 ### Fájltípus- és PDF-típus-szűrés
 
 ```powershell
-python pipeline.py "C:\dokumentumok" "C:\rag\scanner_state.sqlite" --file-type pdf --pdf-type digital
+python pipeline.py --config "pipeline_config.yaml" --file-type pdf --pdf-type digital
 ```
 
 | Kapcsoló | Értékek | Alapérték | Jelentés |
@@ -156,7 +176,7 @@ A fájltípus-csoportok:
 | `excel` | `.xlsx`, `.xls` |
 | `image` | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tiff` |
 
-A `digital` PDF helyben kinyert szövege 100 karakternél hosszabb. A `scanned` PDF esetén ez a szöveg legfeljebb 100 karakter. A szűrőnek nem megfelelő PDF-ekről a pipeline rövid üzenetet ír, és nem jelöli őket feldolgozottnak.
+A `digital` PDF helyben kinyert szövege 750 karakternél hosszabb. A `scanned` PDF esetén ez a szöveg legfeljebb 750 karakter. A szűrőnek nem megfelelő PDF-ekről a pipeline rövid üzenetet ír, és nem jelöli őket feldolgozottnak.
 
 > **Jelenlegi korlát:** a pipeline dokumentumkinyerési lépése jelenleg PDF-eket támogat. A `word`, `excel`, `image` és `all` szűrők kiválaszthatnak más fájlokat is, de ezekhez még nincs feldolgozó implementálva, ezért nem kerülnek sikeresen feldolgozott állapotba. Éles RAG feldolgozáshoz használja az alapértelmezett `--file-type pdf` beállítást.
 
@@ -164,15 +184,15 @@ A `digital` PDF helyben kinyert szövege 100 karakternél hosszabb. A `scanned` 
 
 | PDF típusa | Feltétel | Feldolgozás |
 | --- | --- | --- |
-| Digitális PDF | A kinyert szöveg több mint 100 karakter. | A teljes helyi szöveg a `/chat/completions` végpontra megy `gpt-4o-mini` modellel. |
-| Rövid szkennelt PDF | Legfeljebb 45 oldal és kevés vagy nincs szöveg. | A teljes PDF a Vision-alapú `/answer` végpontra megy `gpt-4o` modellel. |
-| Hosszú szkennelt PDF | Több mint 45 oldal és kevés vagy nincs szöveg. | A PDF 45 oldalas részekre bomlik, minden rész külön kivonatot kap, majd a kivonatokból a `/chat/completions` végpont `gpt-4o` modellel állítja elő a végső JSON-t. |
+| Digitális PDF | A kinyert szöveg több mint 750 karakter. | A teljes helyi szöveg a `/chat/completions` végpontra megy. |
+| Rövid szkennelt PDF | Legfeljebb 25 oldal és kevés vagy nincs szöveg. | A teljes PDF a Vision-alapú `/answer` végpontra megy. |
+| Hosszú szkennelt PDF | Több mint 25 oldal és kevés vagy nincs szöveg. | A PDF 25 oldalas részekre bomlik, minden rész külön kivonatot kap, majd a kivonatokból a `/chat/completions` végpont állítja elő a végső JSON-t. |
 
-A hosszú, szkennelt PDF-ek részfájljai csak ideiglenesen léteznek. A 45 oldalas határ az API képlimitje miatti biztonsági tartalék.
+A hosszú, szkennelt PDF-ek részfájljai csak ideiglenesen léteznek. A 25 oldalas határ csökkenti a nagy szkennelt fájlok API Gateway 413 hibájának kockázatát. A használt modell a YAML `model` mezőjéből érkezik.
 
 ## 4. Staging kimenet
 
-A pipeline minden sikeresen feldolgozott dokumentumhoz létrehoz egy `.txt` fájlt a staging mappában. A fájl neve az eredeti név kiterjesztés nélküli része, például `jelentes.pdf` esetén `jelentes.txt`.
+A pipeline minden sikeresen feldolgozott dokumentumhoz létrehoz egy `.txt` fájlt a staging mappában. A staging útvonal az eredeti fájl teljes abszolút útvonalát tükrözi, például a `C:\dokumentumok\jelentes.pdf` kimenete `staging_output\C\dokumentumok\jelentes.txt`.
 
 ```text
 ---
@@ -202,16 +222,19 @@ last_modified: "2026-08-12"
 | `source_path` | Az eredeti fájl abszolút útvonala. |
 | `last_modified` | Az eredeti fájl utolsó módosítási dátuma UTC szerint. |
 
-Az API-válasznak a `DocumentExtraction` Pydantic modell szerint `title`, `category`, pontosan hét `tags`, `summary` és `questions_answered` mezőt kell tartalmaznia.
+Az API-válasznak a konfigurációban megadott Pydantic séma szerint kell a RAG kimenethez szükséges `title`, `category`, `tags`, `summary` és `questions_answered` mezőket tartalmaznia.
 
 Az abszolút forrásútvonal a staging mappán belül is tükröződik, ezért az azonos nevű, eltérő helyen lévő dokumentumok nem írják felül egymást.
 
 ## 5. Hibakezelés és újrapróbálás
 
+- A pipeline két tényleges dokumentumfeldolgozás között 5 másodpercet vár, hogy ne terhelje túl az API-t.
+- HTTP 503 vagy üres API-válaszból eredő Pydantic JSON-validációs hiba esetén egy dokumentum feldolgozása legfeljebb háromszor fut le.
+- A Vision `/answer` végpont `File input is not supported in this region` HTTP 400 hibájánál a fájl `Skipping: API Region limitation for Vision model` üzenettel kimarad.
 - API-hiba, sérült PDF, érvénytelen JSON vagy mentési hiba esetén az érintett fájl kimarad.
 - A kimaradt fájl nem kerül a `processed_files` táblába, ezért a következő futás ismét megpróbálja feldolgozni.
 - A pipeline csak a staging fájl sikeres mentése után hívja meg a `mark_as_processed()` metódust.
-- A PDF JSON-válaszának meg kell felelnie a `DocumentExtraction` Pydantic sémájának.
+- A PDF JSON-válaszának meg kell felelnie a konfigurációban kiválasztott Pydantic sémának.
 
 Ha egy dokumentumot szándékosan újra kell feldolgozni, annak hash-ét el kell távolítani a választott SQLite adatbázis `processed_files` táblájából. Az adatbázis teljes törlése minden dokumentumot újnak tekint a következő futásban.
 
@@ -222,5 +245,5 @@ Ha egy dokumentumot szándékosan újra kell feldolgozni, annak hash-ét el kell
 | `Missing VSGPT_CLIENT_ID...` | Ellenőrizze a `.env` fájlt vagy a környezeti változókat. |
 | `Attachment must be a .pdf file` | A közvetlen PDF-feldolgozás csak `.pdf` kiterjesztést és érvényes PDF-fejlécet fogad el. |
 | `Unable to read PDF` | Ellenőrizze, hogy a fájl nem sérült, jelszóval védett vagy éppen használatban van. |
-| Pydantic validációs hiba | Az API válasza nem felelt meg a `DocumentExtraction` sémának; a fájl a következő futáskor újrapróbálható. |
+| Pydantic validációs hiba | Az API válasza nem felelt meg a konfigurált sémának; a fájl a következő futáskor újrapróbálható. |
 | Nem jelenik meg új fájl | A tartalom hash-e már szerepel az állapotadatbázisban, vagy a fájl nem felel meg az aktív szűrőknek. |

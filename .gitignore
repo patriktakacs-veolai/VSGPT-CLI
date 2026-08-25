@@ -8,3 +8,4 @@ __pycache__/
 scanner_state.sqlite
 hibas_scanner_state.sqlite
 staging_output/
+pipeline_config.yaml/
